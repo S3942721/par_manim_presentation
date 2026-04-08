@@ -247,35 +247,39 @@ class MazePathPlanning(Slide):
         
         nodes_star, edits_star, path_star = run_rrt(start_star, goal_star, obstacles, width, height, max_iter=800, step_size=1.0, star=True)
         
-        lines_star_dict = {}
         lines_star_group = VGroup()
         self.add(lines_star_group)
         
-        anims_star = []
-        for edit in edits_star:
-            if edit[0] == 'add':
-                n1, n2 = edit[1], edit[2]
-                line = Line(to_coord(n1), to_coord(n2), color=ORANGE, stroke_width=2)
-                lines_star_dict[(n1, n2)] = line
-                lines_star_group.add(line)
-                anims_star.append(Create(line))
-            elif edit[0] == 'rewire':
-                n, old_p, new_p = edit[1], edit[2], edit[3]
-                old_line = None
-                if (old_p, n) in lines_star_dict:
-                    old_line = lines_star_dict[(old_p, n)]
-                    lines_star_group.remove(old_line)
-                new_line = Line(to_coord(new_p), to_coord(n), color=ORANGE, stroke_width=2)
-                lines_star_dict[(new_p, n)] = new_line
-                lines_star_group.add(new_line)
+        lines_cache = {}
+        def get_line(p1, p2):
+            if (p1, p2) not in lines_cache:
+                lines_cache[(p1, p2)] = Line(to_coord(p1), to_coord(p2), color=ORANGE, stroke_width=2)
+            return lines_cache[(p1, p2)]
+            
+        tracker = ValueTracker(0)
+        
+        def update_star(mob):
+            idx = int(tracker.get_value())
+            mob.submobjects = []
+            
+            active_lines = {}
+            for i in range(min(idx, len(edits_star))):
+                edit = edits_star[i]
+                if edit[0] == 'add':
+                    n1, n2 = edit[1], edit[2]
+                    active_lines[(n1, n2)] = True
+                elif edit[0] == 'rewire':
+                    n, old_p, new_p = edit[1], edit[2], edit[3]
+                    if (old_p, n) in active_lines:
+                        del active_lines[(old_p, n)]
+                    active_lines[(new_p, n)] = True
+            
+            for (p1, p2) in active_lines:
+                mob.add(get_line(p1, p2))
                 
-                if old_line:
-                    anims_star.append(AnimationGroup(FadeOut(old_line, run_time=0.1), Create(new_line, run_time=0.1)))
-                else:
-                    anims_star.append(Create(new_line, run_time=0.1))
-                    
-        if anims_star:
-            self.play(Succession(*anims_star), run_time=6.0)
+        lines_star_group.add_updater(update_star)
+        self.play(tracker.animate.set_value(len(edits_star)), run_time=8.0, rate_func=linear)
+        lines_star_group.remove_updater(update_star)
                         
         path_lines_star = VGroup()
         for i in range(len(path_star)-1):

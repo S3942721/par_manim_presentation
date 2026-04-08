@@ -216,3 +216,5 @@ venv/
 
 # Local copy of docs
 manim_docs/
+
+*_assets/
