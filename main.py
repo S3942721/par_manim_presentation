@@ -602,11 +602,60 @@ class MazePathPlanning(Slide):
         star_tree_edges = {}
 
         accepted_star_trace = [t for t in rrt_star_detail["trace"] if t["accepted"]]
-        first_rewire_idx = next((idx for idx, t in enumerate(accepted_star_trace) if len(t["rewired"]) > 0), None)
-        target_count = 6 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< Changable number of iterations to show in detail
-        if first_rewire_idx is not None:
-            target_count = max(target_count, first_rewire_idx + 1)
-        selected_star_trace = accepted_star_trace[:target_count]
+        fast_forward_count = 12 # Number to fast forward
+        detailed_count = 5 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< Changable number of iterations to show in detail
+        fast_forward_trace = accepted_star_trace[:fast_forward_count]
+        selected_star_trace = accepted_star_trace[fast_forward_count:fast_forward_count + detailed_count]
+
+        highlight_code(pseudo_code_star, [])
+        set_caption(caption_star, f"Fast-forward: first {len(fast_forward_trace)} accepted RRT* nodes.")
+        for step in fast_forward_trace:
+            parent = step["parent"]
+            if parent not in star_tree_dots:
+                continue
+
+            parent_dot = star_tree_dots[parent]
+            new_dot = Dot(to_coord_small_star(step["new_node"]), color=ORANGE).scale(0.75)
+            new_edge = Line(parent_dot.get_center(), new_dot.get_center(), color=ORANGE, stroke_width=2.4)
+            self.play(Create(new_edge), FadeIn(new_dot), run_time=0.16)
+            star_tree_dots[step["new_node"]] = new_dot
+            star_tree_edges[(parent, step["new_node"])] = new_edge
+
+            for rewired_node, old_parent, new_parent in step["rewired"]:
+                if rewired_node not in star_tree_dots or new_parent not in star_tree_dots:
+                    continue
+
+                rewired_dot = star_tree_dots[rewired_node]
+                old_edge_key = (old_parent, rewired_node)
+                rewire_anims = []
+                if old_edge_key in star_tree_edges:
+                    rewire_anims.append(FadeOut(star_tree_edges[old_edge_key]))
+                    del star_tree_edges[old_edge_key]
+
+                new_edge_rewire = Line(
+                    star_tree_dots[new_parent].get_center(),
+                    rewired_dot.get_center(),
+                    color=PURPLE,
+                    stroke_width=2.6,
+                )
+                star_tree_edges[(new_parent, rewired_node)] = new_edge_rewire
+                rewire_anims.extend([Create(new_edge_rewire), rewired_dot.animate.set_color(PURPLE)])
+                self.play(*rewire_anims, run_time=0.14)
+
+        if fast_forward_trace:
+            last_fast_forward_iter = fast_forward_trace[-1]["iteration"]
+            ff_iter_label = Tex(
+                rf"\textbf{{Iteration: }}{last_fast_forward_iter}",
+                font_size=28,
+                color=WHITE,
+            ).to_corner(UR).shift(DOWN * 0.8)
+            self.play(Transform(iter_label_star, ff_iter_label), run_time=0.35)
+
+        set_caption(
+            caption_star,
+            f"Now slow mode: line-by-line walkthrough for the next {len(selected_star_trace)} accepted iterations.",
+        )
+        self.next_slide()
 
         for step in selected_star_trace:
             new_iter_label = Tex(rf"\textbf{{Iteration: }}{step['iteration']}", font_size=28, color=WHITE).to_corner(UR).shift(DOWN * 0.8)
