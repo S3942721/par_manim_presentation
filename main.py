@@ -29,10 +29,11 @@ def check_collision(obstacles, n1, n2, width, height, step=0.1):
                 return True
     return False
 
-def get_random_node(width, height, obstacles):
+def get_random_node(width, height, obstacles, rng=None):
+    rng = rng or random
     while True:
-        x = random.uniform(0, width)
-        y = random.uniform(0, height)
+        x = rng.uniform(0, width)
+        y = rng.uniform(0, height)
         in_obs = False
         for (xmin, ymin, xmax, ymax) in obstacles:
             if xmin <= x <= xmax and ymin <= y <= ymax:
@@ -41,14 +42,15 @@ def get_random_node(width, height, obstacles):
         if not in_obs:
             return Node(x, y)
 
-def generate_obstacles(num_obstacles, width, height, start, goal, clear_radius=1.5):
+def generate_obstacles(num_obstacles, width, height, start, goal, clear_radius=1.5, rng=None):
+    rng = rng or random
     obstacles = []
     for _ in range(num_obstacles):
-        w = random.uniform(1.5, 4.0)
-        h = random.uniform(1.5, 4.0)
+        w = rng.uniform(1.5, 4.0)
+        h = rng.uniform(1.5, 4.0)
         # Limit the maximum y-coordinate to prevent obstacles from overlapping the title at the top
-        x = random.uniform(0, width - w)
-        y = random.uniform(0, height - h - 2.0)
+        x = rng.uniform(0, width - w)
+        y = rng.uniform(0, height - h - 2.0)
         xmin, ymin, xmax, ymax = x, y, x + w, y + h
         
         # Ensure start and goal are not inside or too close to the obstacle
@@ -62,243 +64,783 @@ def generate_obstacles(num_obstacles, width, height, start, goal, clear_radius=1
         obstacles.append((xmin, ymin, xmax, ymax))
     return obstacles
 
-def run_rrt(start, goal, obstacles, width, height, max_iter=500, step_size=1.0, star=False):
-    nodes = [start]
-    edges_to_animate = []
-    
-    for _ in range(max_iter):
-        if random.random() < 0.1:
-            rand_node = Node(goal.x, goal.y)
-        else:
-            rand_node = get_random_node(width, height, obstacles)
-            
-        nearest = min(nodes, key=lambda n: distance(n, rand_node))
-        
-        dist = distance(nearest, rand_node)
-        if dist == 0:
-            continue
-            
-        theta = math.atan2(rand_node.y - nearest.y, rand_node.x - nearest.x)
-        current_step = min(step_size, dist)
-        new_x = nearest.x + current_step * math.cos(theta)
-        new_y = nearest.y + current_step * math.sin(theta)
-        
-        new_node = Node(new_x, new_y)
-        
-        if not check_collision(obstacles, nearest, new_node, width, height):
-            if not star:
-                new_node.parent = nearest
-                new_node.cost = nearest.cost + distance(nearest, new_node)
-                nodes.append(new_node)
-                edges_to_animate.append(('add', nearest, new_node))
-                
-                if distance(new_node, goal) < step_size:
-                    if not check_collision(obstacles, new_node, goal, width, height):
-                        goal.parent = new_node
-                        goal.cost = new_node.cost + distance(new_node, goal)
-                        nodes.append(goal)
-                        edges_to_animate.append(('add', new_node, goal))
-                        break
-            else:
-                # RRT* implementation
-                radius = 3.0
-                near_nodes = [n for n in nodes if distance(n, new_node) <= radius and not check_collision(obstacles, n, new_node, width, height)]
-                
-                min_cost_node = nearest
-                min_cost = nearest.cost + distance(nearest, new_node)
-                
-                for n in near_nodes:
-                    if n.cost + distance(n, new_node) < min_cost:
-                        min_cost_node = n
-                        min_cost = n.cost + distance(n, new_node)
-                
-                new_node.parent = min_cost_node
-                new_node.cost = min_cost
-                nodes.append(new_node)
-                edges_to_animate.append(('add', min_cost_node, new_node))
-                
-                # Rewiring logic
-                for n in near_nodes:
-                    if new_node.cost + distance(new_node, n) < n.cost:
-                        old_parent = n.parent
-                        n.parent = new_node
-                        n.cost = new_node.cost + distance(new_node, n)
-                        edges_to_animate.append(('rewire', n, old_parent, new_node))
-                        
-                if distance(new_node, goal) < step_size:
-                    if not check_collision(obstacles, new_node, goal, width, height):
-                        goal_copy = Node(goal.x, goal.y)
-                        goal_copy.parent = new_node
-                        goal_copy.cost = new_node.cost + distance(new_node, goal_copy)
-                        nodes.append(goal_copy)
-                        edges_to_animate.append(('add', new_node, goal_copy))
-                        goal = goal_copy
-                        break
-                    
+def extract_path(nodes, goal_target, solved_goal=None):
+    if solved_goal is not None:
+        curr = solved_goal
+    else:
+        curr = min(nodes, key=lambda n: distance(n, goal_target))
+
     path = []
-    curr = nodes[-1] if distance(nodes[-1], goal) < 0.1 else None
-    
-    if curr is None:
-        min_dist = float('inf')
-        for n in nodes:
-             if distance(n, goal) < min_dist:
-                 min_dist = distance(n, goal)
-                 curr = n
-                 
     while curr is not None:
         path.append(curr)
         curr = curr.parent
     path.reverse()
-    
-    return nodes, edges_to_animate, path
+    return path
+
+
+def run_rrt_trace(
+    start,
+    goal,
+    obstacles,
+    width,
+    height,
+    max_iter=500,
+    step_size=1.0,
+    star=False,
+    rng=None,
+    goal_sample_rate=0.1,
+    radius=3.0,
+    trace_limit=None,
+    terminate_on_goal=True,
+):
+    rng = rng or random
+
+    start_node = Node(start.x, start.y)
+    goal_target = Node(goal.x, goal.y)
+    nodes = [start_node]
+    edits_to_animate = []
+    traces = []
+    solved_goal = None
+
+    for iteration in range(max_iter):
+        goal_biased = rng.random() < goal_sample_rate
+        rand_node = Node(goal_target.x, goal_target.y) if goal_biased else get_random_node(width, height, obstacles, rng=rng)
+
+        nearest = min(nodes, key=lambda n: distance(n, rand_node))
+        dist = distance(nearest, rand_node)
+        if dist == 0:
+            continue
+
+        theta = math.atan2(rand_node.y - nearest.y, rand_node.x - nearest.x)
+        current_step = min(step_size, dist)
+        new_node = Node(
+            nearest.x + current_step * math.cos(theta),
+            nearest.y + current_step * math.sin(theta),
+        )
+
+        in_collision = check_collision(obstacles, nearest, new_node, width, height)
+        step_trace = {
+            "iteration": iteration + 1,
+            "goal_biased": goal_biased,
+            "rand_node": rand_node,
+            "nearest": nearest,
+            "new_node": new_node,
+            "collision": in_collision,
+            "accepted": False,
+            "parent": None,
+            "near_nodes": [],
+            "candidate_costs": [],
+            "rewired": [],
+            "goal_connected": False,
+        }
+
+        if in_collision:
+            traces.append(step_trace)
+            if trace_limit is not None and len(traces) >= trace_limit:
+                break
+            continue
+
+        if not star:
+            new_node.parent = nearest
+            new_node.cost = nearest.cost + distance(nearest, new_node)
+            nodes.append(new_node)
+            edits_to_animate.append(("add", nearest, new_node))
+
+            step_trace["accepted"] = True
+            step_trace["parent"] = nearest
+
+            if distance(new_node, goal_target) < step_size and not check_collision(obstacles, new_node, goal_target, width, height):
+                goal_node = Node(goal_target.x, goal_target.y)
+                goal_node.parent = new_node
+                goal_node.cost = new_node.cost + distance(new_node, goal_node)
+                nodes.append(goal_node)
+                edits_to_animate.append(("add", new_node, goal_node))
+                solved_goal = goal_node
+                step_trace["goal_connected"] = True
+
+                traces.append(step_trace)
+                if terminate_on_goal:
+                    break
+                if trace_limit is not None and len(traces) >= trace_limit:
+                    break
+                continue
+
+            traces.append(step_trace)
+            if trace_limit is not None and len(traces) >= trace_limit:
+                break
+            continue
+
+        near_nodes = [
+            n
+            for n in nodes
+            if distance(n, new_node) <= radius and not check_collision(obstacles, n, new_node, width, height)
+        ]
+
+        min_cost_node = nearest
+        min_cost = nearest.cost + distance(nearest, new_node)
+        candidate_costs = [(nearest, min_cost)]
+
+        for n in near_nodes:
+            candidate_cost = n.cost + distance(n, new_node)
+            candidate_costs.append((n, candidate_cost))
+            if candidate_cost < min_cost:
+                min_cost_node = n
+                min_cost = candidate_cost
+
+        new_node.parent = min_cost_node
+        new_node.cost = min_cost
+        nodes.append(new_node)
+        edits_to_animate.append(("add", min_cost_node, new_node))
+
+        rewired_nodes = []
+        for n in near_nodes:
+            if n is min_cost_node:
+                continue
+            rewire_cost = new_node.cost + distance(new_node, n)
+            if rewire_cost + 1e-9 < n.cost:
+                old_parent = n.parent
+                n.parent = new_node
+                n.cost = rewire_cost
+                rewired_nodes.append((n, old_parent, new_node))
+                edits_to_animate.append(("rewire", n, old_parent, new_node))
+
+        step_trace["accepted"] = True
+        step_trace["parent"] = min_cost_node
+        step_trace["near_nodes"] = near_nodes
+        step_trace["candidate_costs"] = candidate_costs
+        step_trace["rewired"] = rewired_nodes
+
+        if distance(new_node, goal_target) < step_size and not check_collision(obstacles, new_node, goal_target, width, height):
+            goal_node = Node(goal_target.x, goal_target.y)
+            goal_node.parent = new_node
+            goal_node.cost = new_node.cost + distance(new_node, goal_node)
+            nodes.append(goal_node)
+            edits_to_animate.append(("add", new_node, goal_node))
+            solved_goal = goal_node
+            step_trace["goal_connected"] = True
+
+            traces.append(step_trace)
+            if terminate_on_goal:
+                break
+            if trace_limit is not None and len(traces) >= trace_limit:
+                break
+            continue
+
+        traces.append(step_trace)
+        if trace_limit is not None and len(traces) >= trace_limit:
+            break
+
+    path = extract_path(nodes, goal_target, solved_goal=solved_goal)
+    return {
+        "start": start_node,
+        "goal": goal_target,
+        "solved_goal": solved_goal,
+        "nodes": nodes,
+        "edits": edits_to_animate,
+        "path": path,
+        "trace": traces,
+    }
+
+
+def run_rrt(start, goal, obstacles, width, height, max_iter=500, step_size=1.0, star=False):
+    result = run_rrt_trace(
+        start,
+        goal,
+        obstacles,
+        width,
+        height,
+        max_iter=max_iter,
+        step_size=step_size,
+        star=star,
+    )
+    return result["nodes"], result["edits"], result["path"]
 
 class MazePathPlanning(Slide):
     skip_reversing = True
     
     def construct(self):
-        # Set a fixed random seed so that Manim caches the generated layout and partial videos.
         random.seed(42)
-        
-        width, height = 21, 13
-        scale_factor = 0.6
-        
-        # SLIDE 1: Displaying the workspace (Background and Grid)
-        # Dark grey background
-        bg_rect = Rectangle(width=width * scale_factor, height=height * scale_factor)
-        bg_rect.set_fill(DARK_GRAY, opacity=1.0)
-        bg_rect.set_stroke(WHITE, width=2)
-        self.play(FadeIn(bg_rect))
-        
-        # Grid layout
-        grid = VGroup()
-        for x in range(width + 1):
-            x_coord = (x - width / 2) * scale_factor
-            grid.add(Line([x_coord, -height/2 * scale_factor, 0], [x_coord, height/2 * scale_factor, 0], color=GRAY, stroke_width=1))
-        for y in range(height + 1):
-            y_coord = (y - height / 2) * scale_factor
-            grid.add(Line([-width/2 * scale_factor, y_coord, 0], [width/2 * scale_factor, y_coord, 0], color=GRAY, stroke_width=1))
-        self.play(Create(grid))
-        
+
+        def set_caption(caption_obj, text, run_time=0.6):
+            new_caption = Text(text, font_size=21, color=LIGHT_GRAY).to_edge(DOWN).shift(UP * 0.1)
+            self.play(Transform(caption_obj, new_caption), run_time=run_time)
+
+        def highlight_code(code_group, active_idx, color=YELLOW, run_time=0.4):
+            anims = []
+            for idx, line in enumerate(code_group):
+                target_color = color if idx in active_idx else WHITE
+                anims.append(line.animate.set_color(target_color))
+            self.play(*anims, run_time=run_time)
+
+        def build_map(width, height, scale_factor, start, goal, obstacles):
+            bg_rect = Rectangle(width=width * scale_factor, height=height * scale_factor)
+            bg_rect.set_fill(DARK_GRAY, opacity=1.0)
+            bg_rect.set_stroke(WHITE, width=2)
+
+            grid = VGroup()
+            for x in range(width + 1):
+                x_coord = (x - width / 2) * scale_factor
+                grid.add(Line([x_coord, -height / 2 * scale_factor, 0], [x_coord, height / 2 * scale_factor, 0], color=GRAY, stroke_width=1))
+            for y in range(height + 1):
+                y_coord = (y - height / 2) * scale_factor
+                grid.add(Line([-width / 2 * scale_factor, y_coord, 0], [width / 2 * scale_factor, y_coord, 0], color=GRAY, stroke_width=1))
+
+            obs_group = VGroup()
+            for (xmin, ymin, xmax, ymax) in obstacles:
+                w = xmax - xmin
+                h = ymax - ymin
+                rect = Rectangle(width=w * scale_factor, height=h * scale_factor)
+                rect.set_fill(WHITE, opacity=1.0)
+                rect.set_stroke(WHITE, opacity=1.0)
+                center_x = (xmin + w / 2 - width / 2) * scale_factor
+                center_y = (ymin + h / 2 - height / 2) * scale_factor
+                rect.move_to([center_x, center_y, 0])
+                obs_group.add(rect)
+
+            def to_coord_local(node):
+                return np.array([(node.x - width / 2) * scale_factor, (node.y - height / 2) * scale_factor, 0])
+
+            start_dot = Dot(to_coord_local(start), color=GREEN).scale(1.2)
+            goal_dot = Dot(to_coord_local(goal), color=RED).scale(1.2)
+            map_group = VGroup(bg_rect, grid, obs_group, start_dot, goal_dot)
+
+            # Use map_group center so coordinates stay correct after moving the map on screen.
+            def to_coord(node):
+                return map_group.get_center() + to_coord_local(node)
+
+            return map_group, to_coord, start_dot, goal_dot
+
+        # ---------------------------------------------------------
+        # SLIDE 1: Title and Context
+        # ---------------------------------------------------------
+        title1 = Text("Path Planning in Robotics", font_size=50).shift(UP * 1.1)
+        title2 = Text("RRT and RRT*", font_size=52, color=BLUE).next_to(title1, DOWN, buff=0.25)
+        subtitle = Text("Fast Exploration vs Optimal Navigation", font_size=30, color=LIGHT_GREY).next_to(title2, DOWN, buff=0.4)
+
+        refs = VGroup(
+            Text("LaValle (1998): Rapidly-exploring Random Trees", font_size=22),
+            Text("Karaman and Frazzoli (2011): Asymptotic Optimality", font_size=22),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.15).next_to(subtitle, DOWN, buff=0.8)
+
+        self.play(Write(title1), Write(title2), run_time=1.4)
+        self.play(FadeIn(subtitle), FadeIn(refs), run_time=1.0)
         self.next_slide()
-        
-        # SLIDE 2: Generate and display mapping obstacles
-        start = Node(2, 2)
-        goal = Node(width - 3, height - 3)
-        obstacles = generate_obstacles(15, width, height, start, goal)
-        
-        obs_group = VGroup()
-        for (xmin, ymin, xmax, ymax) in obstacles:
-            w = xmax - xmin
-            h = ymax - ymin
-            rect = Rectangle(width=w * scale_factor, height=h * scale_factor)
-            rect.set_fill(WHITE, opacity=1.0)
-            rect.set_stroke(WHITE, opacity=1.0)
-            
-            center_x = (xmin + w / 2 - width / 2) * scale_factor
-            center_y = (ymin + h / 2 - height / 2) * scale_factor
-            rect.move_to([center_x, center_y, 0])
-            obs_group.add(rect)
-        
-        self.play(FadeIn(obs_group))
-        
+        self.play(FadeOut(title1), FadeOut(title2), FadeOut(subtitle), FadeOut(refs))
+
+        # ---------------------------------------------------------
+        # Shared deterministic setup for granular slides
+        # ---------------------------------------------------------
+        small_width, small_height = 12, 8
+        small_scale = 0.58
+        small_start = Node(1.2, 1.0)
+        small_goal = Node(10.5, 6.8)
+        small_obstacles = generate_obstacles(
+            6,
+            small_width,
+            small_height,
+            small_start,
+            small_goal,
+            clear_radius=1.0,
+            rng=random.Random(101),
+        )
+
+        rrt_detail = run_rrt_trace(
+            small_start,
+            small_goal,
+            small_obstacles,
+            small_width,
+            small_height,
+            max_iter=250,
+            step_size=0.85,
+            star=False,
+            rng=random.Random(202),
+            goal_sample_rate=0.08,
+            trace_limit=160,
+            terminate_on_goal=False,
+        )
+
+        rrt_star_detail = run_rrt_trace(
+            small_start,
+            small_goal,
+            small_obstacles,
+            small_width,
+            small_height,
+            max_iter=320,
+            step_size=0.85,
+            star=True,
+            rng=random.Random(303),
+            goal_sample_rate=0.08,
+            radius=2.6,
+            trace_limit=220,
+            terminate_on_goal=False,
+        )
+
+        # ---------------------------------------------------------
+        # SLIDE 2: Hyper-detailed RRT Iterations
+        # ---------------------------------------------------------
+        rrt_title = Tex(r"\textbf{RRT: Iteration-by-Iteration Execution}", font_size=40, color=BLUE).to_corner(UL)
+        self.play(FadeIn(rrt_title))
+
+        pseudo_code_rrt = VGroup(
+            Tex(r"$x_{rand} \leftarrow \text{SampleFree}(X_{free})$", font_size=24),
+            Tex(r"$x_{nearest} \leftarrow \text{Nearest}(\mathcal{T}, x_{rand})$", font_size=24),
+            Tex(r"$x_{new} \leftarrow \text{Steer}(x_{nearest}, x_{rand}, \Delta t)$", font_size=24),
+            Tex(r"\textbf{if} $\text{ObstacleFree}(x_{nearest}, x_{new})$ \textbf{then}", font_size=24),
+            Tex(r"$\mathcal{T}.\text{add\_vertex}(x_{new})$", font_size=24),
+            Tex(r"$\mathcal{T}.\text{add\_edge}(x_{nearest}, x_{new})$", font_size=24),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.2).next_to(rrt_title, DOWN, buff=0.35).align_to(rrt_title, LEFT)
+        pseudo_code_rrt[4].shift(RIGHT * 0.45)
+        pseudo_code_rrt[5].shift(RIGHT * 0.45)
+        self.play(Write(pseudo_code_rrt), run_time=1.5)
+
+        small_map_rrt, to_coord_small, _, _ = build_map(
+            small_width,
+            small_height,
+            small_scale,
+            rrt_detail["start"],
+            rrt_detail["goal"],
+            small_obstacles,
+        )
+        small_map_rrt.to_edge(RIGHT, buff=0.55).shift(DOWN * 0.35)
+        self.play(FadeIn(small_map_rrt))
+
+        iter_label_rrt = Tex(r"\textbf{Iteration: }0", font_size=28, color=WHITE).to_corner(UR).shift(DOWN * 0.8)
+        caption_rrt = Text("We now run RRT line-by-line using seeded random samples.", font_size=21, color=LIGHT_GRAY).to_edge(DOWN).shift(UP * 0.1)
+        self.play(FadeIn(iter_label_rrt), FadeIn(caption_rrt))
         self.next_slide()
-        
-        # SLIDE 3: Show Start & Goal points
-        def to_coord(node):
-            return np.array([(node.x - width / 2) * scale_factor, (node.y - height / 2) * scale_factor, 0])
-            
-        start_dot = Dot(to_coord(start), color=GREEN).scale(1.5)
-        goal_dot = Dot(to_coord(goal), color=RED).scale(1.5)
-        self.play(FadeIn(start_dot), FadeIn(goal_dot))
-        
+
+        rrt_tree_dots = {rrt_detail["start"]: small_map_rrt[-2]}
+        rrt_tree_edges = {}
+        rrt_steps_to_show = 10 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< Changable number of iterations to show in detail
+        trace_rrt = rrt_detail["trace"][:rrt_steps_to_show]
+
+        for step in trace_rrt:
+            new_iter_label = Tex(rf"\textbf{{Iteration: }}{step['iteration']}", font_size=28, color=WHITE).to_corner(UR).shift(DOWN * 0.8)
+            self.play(Transform(iter_label_rrt, new_iter_label), run_time=0.4)
+
+            highlight_code(pseudo_code_rrt, [0])
+            set_caption(caption_rrt, "Step 1: We randomly sample a target state in free space.")
+            rand_dot = Dot(to_coord_small(step["rand_node"]), color=YELLOW).scale(0.7)
+            rand_label = Tex(r"$x_{rand}$", font_size=20, color=YELLOW).next_to(rand_dot, UP, buff=0.05)
+            self.play(FadeIn(rand_dot), FadeIn(rand_label), run_time=0.9)
+            self.next_slide()
+
+            highlight_code(pseudo_code_rrt, [1])
+            set_caption(caption_rrt, "Step 2: We find the existing tree node closest to the sample.")
+            nearest_node = step["nearest"]
+            nearest_dot = rrt_tree_dots[nearest_node]
+            nearest_label = Tex(r"$x_{nearest}$", font_size=20, color=GREEN).next_to(nearest_dot, LEFT, buff=0.05)
+            guide_to_rand = DashedLine(nearest_dot.get_center(), rand_dot.get_center(), color=GRAY, dashed_ratio=0.5)
+            self.play(Create(guide_to_rand), FadeIn(nearest_label), nearest_dot.animate.set_color(GREEN), run_time=1.1)
+            self.next_slide()
+
+            highlight_code(pseudo_code_rrt, [2])
+            set_caption(caption_rrt, "Step 3: We steer only one step toward the random sample.")
+            new_temp = Dot(to_coord_small(step["new_node"]), color=RED).scale(0.75)
+            new_label = Tex(r"$x_{new}$", font_size=20, color=RED).next_to(new_temp, DOWN, buff=0.05)
+            steer_line = DashedLine(nearest_dot.get_center(), new_temp.get_center(), color=YELLOW, dashed_ratio=0.55)
+            self.play(FadeIn(new_temp), FadeIn(new_label), Create(steer_line), run_time=1.0)
+            self.next_slide()
+
+            highlight_code(pseudo_code_rrt, [3])
+            set_caption(caption_rrt, "Step 4: Collision check decides if we can safely add this node.")
+            collision_color = RED if step["collision"] else GREEN
+            collision_text = "Collision detected: reject this sample." if step["collision"] else "No collision: we can add this node to the tree."
+            collision_tag = Text(collision_text, font_size=18, color=collision_color).next_to(caption_rrt, UP, buff=0.1)
+            self.play(FadeIn(collision_tag), run_time=0.8)
+            self.next_slide()
+
+            if step["collision"]:
+                set_caption(caption_rrt, "The candidate intersects an obstacle, so this iteration ends.")
+                self.play(
+                    FadeOut(collision_tag),
+                    FadeOut(steer_line),
+                    FadeOut(guide_to_rand),
+                    FadeOut(new_temp),
+                    FadeOut(new_label),
+                    FadeOut(rand_dot),
+                    FadeOut(rand_label),
+                    FadeOut(nearest_label),
+                    nearest_dot.animate.set_color(BLUE),
+                    run_time=1.0,
+                )
+                self.next_slide()
+                continue
+
+            highlight_code(pseudo_code_rrt, [4, 5])
+            set_caption(caption_rrt, "Step 5 and 6: Add the new node and connect it with an edge.")
+            parent = step["parent"]
+            parent_dot = rrt_tree_dots[parent]
+            new_edge = Line(parent_dot.get_center(), new_temp.get_center(), color=BLUE, stroke_width=2)
+            self.play(FadeOut(steer_line), FadeOut(guide_to_rand), Create(new_edge), new_temp.animate.set_color(BLUE), run_time=1.2)
+            rrt_tree_dots[step["new_node"]] = new_temp
+            rrt_tree_edges[(parent, step["new_node"])] = new_edge
+
+            self.play(
+                FadeOut(collision_tag),
+                FadeOut(rand_dot),
+                FadeOut(rand_label),
+                FadeOut(nearest_label),
+                FadeOut(new_label),
+                parent_dot.animate.set_color(BLUE),
+                run_time=0.8,
+            )
+            self.next_slide()
+
+        highlight_code(pseudo_code_rrt, [])
+        set_caption(caption_rrt, "After many repeated iterations, RRT quickly explores free space.")
         self.next_slide()
-        
-        # SLIDE 4: Standard RRT Animation
-        label_rrt = Text("Rapidly-exploring Random Tree (RRT)", font_size=36).to_edge(UP)
-        self.play(Write(label_rrt))
-        
-        nodes, edits, path = run_rrt(start, goal, obstacles, width, height, max_iter=800, step_size=1.0, star=False)
-        
-        lines_rrt = VGroup()
-        for edit in edits:
-            if edit[0] == 'add':
-                line = Line(to_coord(edit[1]), to_coord(edit[2]), color=BLUE, stroke_width=2)
-                lines_rrt.add(line)
-        self.play(Create(lines_rrt, run_time=3))
-        
-        path_lines_rrt = VGroup()
-        for i in range(len(path)-1):
-            line = Line(to_coord(path[i]), to_coord(path[i+1]), color=YELLOW, stroke_width=5)
-            path_lines_rrt.add(line)
-        if len(path_lines_rrt) > 0:
-            self.play(Create(path_lines_rrt, run_time=1.5))
-        
+
+        self.play(*[FadeOut(mob) for mob in list(self.mobjects)])
+
+        # ---------------------------------------------------------
+        # SLIDE 3: Full-length RRT Growth (slower)
+        # ---------------------------------------------------------
+        full_rrt_title = Tex(r"\textbf{RRT Full Demonstration}", font_size=40, color=BLUE).to_edge(UP)
+        self.play(FadeIn(full_rrt_title))
+
+        full_width, full_height = 21, 13
+        full_scale = 0.48
+        full_start = Node(2, 2)
+        full_goal = Node(full_width - 3, full_height - 3)
+        full_obstacles = generate_obstacles(14, full_width, full_height, full_start, full_goal, rng=random.Random(501))
+
+        full_rrt_result = run_rrt_trace(
+            full_start,
+            full_goal,
+            full_obstacles,
+            full_width,
+            full_height,
+            max_iter=1400,
+            step_size=0.95,
+            star=False,
+            rng=random.Random(777),
+            goal_sample_rate=0.08,
+            terminate_on_goal=True,
+        )
+
+        map_full_rrt, to_coord_full, _, _ = build_map(
+            full_width,
+            full_height,
+            full_scale,
+            full_rrt_result["start"],
+            full_rrt_result["goal"],
+            full_obstacles,
+        )
+        map_full_rrt.to_edge(DOWN, buff=0.45)
+        self.play(FadeIn(map_full_rrt))
+
+        caption_full_rrt = Text("RRT grows quickly, but path quality is usually jagged.", font_size=21, color=LIGHT_GRAY).to_edge(DOWN).shift(UP * 0.1)
+        self.play(FadeIn(caption_full_rrt))
         self.next_slide()
-        
-        # Hide original RRT structure so we can clearly view RRT* 
-        self.play(FadeOut(lines_rrt), FadeOut(path_lines_rrt), FadeOut(label_rrt))
-        
-        # SLIDE 5: RRT* (Optimal RRT) Animation
-        label_rrt_star = Text("RRT*", font_size=36).to_edge(UP)
-        self.play(Write(label_rrt_star))
-        
-        start_star = Node(start.x, start.y)
-        goal_star = Node(goal.x, goal.y)
-        
-        nodes_star, edits_star, path_star = run_rrt(start_star, goal_star, obstacles, width, height, max_iter=800, step_size=1.0, star=True)
-        
-        lines_star_group = VGroup()
-        self.add(lines_star_group)
-        
-        lines_cache = {}
-        def get_line(p1, p2):
-            if (p1, p2) not in lines_cache:
-                lines_cache[(p1, p2)] = Line(to_coord(p1), to_coord(p2), color=ORANGE, stroke_width=2)
-            return lines_cache[(p1, p2)]
-            
-        tracker = ValueTracker(0)
-        
-        def update_star(mob):
-            idx = int(tracker.get_value())
-            mob.submobjects = []
-            
-            active_lines = {}
-            for i in range(min(idx, len(edits_star))):
-                edit = edits_star[i]
-                if edit[0] == 'add':
-                    n1, n2 = edit[1], edit[2]
-                    active_lines[(n1, n2)] = True
-                elif edit[0] == 'rewire':
-                    n, old_p, new_p = edit[1], edit[2], edit[3]
-                    if (old_p, n) in active_lines:
-                        del active_lines[(old_p, n)]
-                    active_lines[(new_p, n)] = True
-            
-            for (p1, p2) in active_lines:
-                mob.add(get_line(p1, p2))
-                
-        lines_star_group.add_updater(update_star)
-        self.play(tracker.animate.set_value(len(edits_star)), run_time=8.0, rate_func=linear)
-        lines_star_group.remove_updater(update_star)
-                        
-        path_lines_star = VGroup()
-        for i in range(len(path_star)-1):
-            line = Line(to_coord(path_star[i]), to_coord(path_star[i+1]), color=PURPLE, stroke_width=5)
-            path_lines_star.add(line)
-        if len(path_lines_star) > 0:
-            self.play(Create(path_lines_star, run_time=1.5))
-            
+
+        rrt_full_lines = []
+        for op in full_rrt_result["edits"]:
+            if op[0] == "add":
+                rrt_full_lines.append(Line(to_coord_full(op[1]), to_coord_full(op[2]), color=BLUE, stroke_width=2))
+
+        batch_size = 30
+        for idx in range(0, len(rrt_full_lines), batch_size):
+            chunk = rrt_full_lines[idx:idx + batch_size]
+            if not chunk:
+                continue
+            self.play(LaggedStart(*[Create(line) for line in chunk], lag_ratio=0.08), run_time=2.8)
+            if idx % (batch_size * 2) == 0:
+                self.next_slide()
+
+        rrt_full_path = VGroup(
+            *[
+                Line(to_coord_full(full_rrt_result["path"][i]), to_coord_full(full_rrt_result["path"][i + 1]), color=YELLOW, stroke_width=5)
+                for i in range(max(0, len(full_rrt_result["path"]) - 1))
+            ]
+        )
+        self.play(Create(rrt_full_path), run_time=2.5)
+        set_caption(caption_full_rrt, "This is a valid path, but it is not globally optimal.")
         self.next_slide()
-        
-        # SLIDE 6: Comparative Overlay of RRT and RRT*
-        label_overlay = Text("Comparison: RRT vs RRT*", font_size=36).to_edge(UP)
-        self.play(Transform(label_rrt_star, label_overlay))
-        
-        # Since we used different colors (BLUE vs ORANGE) & (YELLOW vs PURPLE)
-        # we can just bring back the initial RRT layout, putting it on top or side-by-side. 
-        self.play(FadeIn(lines_rrt), FadeIn(path_lines_rrt))
-        
+
+        self.play(*[FadeOut(mob) for mob in list(self.mobjects)])
+
+        # ---------------------------------------------------------
+        # SLIDE 4: Hyper-detailed RRT* Iterations
+        # ---------------------------------------------------------
+        star_title = Tex(r"\textbf{RRT* Line-by-Line Optimization}", font_size=40, color=ORANGE).to_corner(UL)
+        self.play(FadeIn(star_title))
+
+        pseudo_code_star = VGroup(
+            Tex(r"$x_{rand} \leftarrow \text{SampleFree}(X_{free})$", font_size=21),
+            Tex(r"$x_{nearest} \leftarrow \text{Nearest}(\mathcal{T}, x_{rand})$", font_size=21),
+            Tex(r"$x_{new} \leftarrow \text{Steer}(x_{nearest}, x_{rand}, \Delta t)$", font_size=21),
+            Tex(r"\textbf{if} $\text{ObstacleFree}(x_{nearest}, x_{new})$ \textbf{then}", font_size=21),
+            Tex(r"$X_{near} \leftarrow \text{Near}(\mathcal{T}, x_{new}, r_n)$", font_size=21),
+            Tex(r"$x_{min} \leftarrow x_{nearest}, \; c_{min} \leftarrow c(x_{nearest}, x_{new})$", font_size=21),
+            Tex(r"\textbf{for each} $x_{near} \in X_{near}$: update $x_{min}$ if cheaper", font_size=21),
+            Tex(r"$\mathcal{T}.\text{add\_edge}(x_{min}, x_{new})$", font_size=21),
+            Tex(r"\textbf{for each} $x_{near} \in X_{near} \setminus \{x_{min}\}$", font_size=21),
+            Tex(r"\textbf{if cheaper via} $x_{new}$: \textbf{rewire}", font_size=21),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.16).next_to(star_title, DOWN, buff=0.28).align_to(star_title, LEFT)
+        pseudo_code_star[6].shift(RIGHT * 0.45)
+        pseudo_code_star[9].shift(RIGHT * 0.45)
+        self.play(Write(pseudo_code_star), run_time=1.6)
+
+        small_map_star, to_coord_small_star, _, _ = build_map(
+            small_width,
+            small_height,
+            small_scale,
+            rrt_star_detail["start"],
+            rrt_star_detail["goal"],
+            small_obstacles,
+        )
+        small_map_star.to_edge(RIGHT, buff=0.55).shift(DOWN * 0.35)
+        self.play(FadeIn(small_map_star))
+
+        iter_label_star = Tex(r"\textbf{Iteration: }0", font_size=28, color=WHITE).to_corner(UR).shift(DOWN * 0.8)
+        caption_star = Text("RRT* uses the same samples, then optimizes local connections.", font_size=21, color=LIGHT_GRAY).to_edge(DOWN).shift(UP * 0.1)
+        self.play(FadeIn(iter_label_star), FadeIn(caption_star))
         self.next_slide()
+
+        star_tree_dots = {rrt_star_detail["start"]: small_map_star[-2]}
+        star_tree_edges = {}
+
+        accepted_star_trace = [t for t in rrt_star_detail["trace"] if t["accepted"]]
+        first_rewire_idx = next((idx for idx, t in enumerate(accepted_star_trace) if len(t["rewired"]) > 0), None)
+        target_count = 6 # <<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<< Changable number of iterations to show in detail
+        if first_rewire_idx is not None:
+            target_count = max(target_count, first_rewire_idx + 1)
+        selected_star_trace = accepted_star_trace[:target_count]
+
+        for step in selected_star_trace:
+            new_iter_label = Tex(rf"\textbf{{Iteration: }}{step['iteration']}", font_size=28, color=WHITE).to_corner(UR).shift(DOWN * 0.8)
+            self.play(Transform(iter_label_star, new_iter_label), run_time=0.4)
+
+            highlight_code(pseudo_code_star, [0])
+            set_caption(caption_star, "Sample a random target state x_rand.")
+            rand_dot = Dot(to_coord_small_star(step["rand_node"]), color=YELLOW).scale(0.7)
+            rand_label = Tex(r"$x_{rand}$", font_size=18, color=YELLOW).next_to(rand_dot, UP, buff=0.05)
+            self.play(FadeIn(rand_dot), FadeIn(rand_label), run_time=0.8)
+            self.next_slide()
+
+            highlight_code(pseudo_code_star, [1])
+            set_caption(caption_star, "Find x_nearest in the current tree.")
+            nearest_node = step["nearest"]
+            nearest_dot = star_tree_dots[nearest_node]
+            nearest_label = Tex(r"$x_{nearest}$", font_size=18, color=GREEN).next_to(nearest_dot, LEFT, buff=0.05)
+            line_to_rand = DashedLine(nearest_dot.get_center(), rand_dot.get_center(), color=GRAY, dashed_ratio=0.5)
+            self.play(Create(line_to_rand), FadeIn(nearest_label), nearest_dot.animate.set_color(GREEN), run_time=1.0)
+            self.next_slide()
+
+            highlight_code(pseudo_code_star, [2])
+            set_caption(caption_star, "Steer one step from x_nearest toward x_rand.")
+            new_temp = Dot(to_coord_small_star(step["new_node"]), color=RED).scale(0.75)
+            new_label = Tex(r"$x_{new}$", font_size=18, color=RED).next_to(new_temp, DOWN, buff=0.05)
+            steer_line = DashedLine(nearest_dot.get_center(), new_temp.get_center(), color=YELLOW, dashed_ratio=0.55)
+            self.play(FadeIn(new_temp), FadeIn(new_label), Create(steer_line), run_time=1.0)
+            self.next_slide()
+
+            highlight_code(pseudo_code_star, [3])
+            set_caption(caption_star, "Collision check: only safe candidates proceed.")
+            if step["collision"]:
+                reject_text = Text("Blocked by obstacle, skip this sample.", font_size=18, color=RED).next_to(caption_star, UP, buff=0.1)
+                self.play(FadeIn(reject_text), run_time=0.8)
+                self.next_slide()
+                self.play(
+                    FadeOut(reject_text),
+                    FadeOut(rand_dot),
+                    FadeOut(rand_label),
+                    FadeOut(nearest_label),
+                    FadeOut(line_to_rand),
+                    FadeOut(steer_line),
+                    FadeOut(new_label),
+                    FadeOut(new_temp),
+                    nearest_dot.animate.set_color(ORANGE),
+                    run_time=1.0,
+                )
+                self.next_slide()
+                continue
+
+            highlight_code(pseudo_code_star, [4])
+            set_caption(caption_star, "Compute X_near: nearby nodes around x_new.")
+            near_circle = Circle(radius=2.6 * small_scale, color=ORANGE, stroke_width=2).move_to(new_temp.get_center())
+            near_labels = VGroup()
+            for near_node in step["near_nodes"]:
+                if near_node not in star_tree_dots:
+                    continue
+                near_dot = star_tree_dots[near_node]
+                near_labels.add(Tex(r"$X_{near}$", font_size=14, color=ORANGE).next_to(near_dot, UP, buff=0.02))
+            self.play(Create(near_circle), FadeIn(near_labels), run_time=1.1)
+            self.next_slide()
+
+            highlight_code(pseudo_code_star, [5, 6])
+            set_caption(caption_star, "Evaluate all candidate parents and pick the cheapest x_min.")
+            candidate_lines = VGroup()
+            for near_node in step["near_nodes"]:
+                if near_node in star_tree_dots:
+                    candidate_lines.add(DashedLine(star_tree_dots[near_node].get_center(), new_temp.get_center(), color=GRAY, dashed_ratio=0.5))
+            if step["nearest"] in star_tree_dots:
+                candidate_lines.add(DashedLine(star_tree_dots[step["nearest"]].get_center(), new_temp.get_center(), color=GRAY, dashed_ratio=0.5))
+            self.play(Create(candidate_lines), run_time=1.0)
+
+            parent = step["parent"]
+            parent_dot = star_tree_dots[parent]
+            x_min_label = Tex(r"$x_{min}$", font_size=18, color=ORANGE).next_to(parent_dot, UP, buff=0.05)
+            self.play(parent_dot.animate.set_color(ORANGE), FadeIn(x_min_label), run_time=0.8)
+            self.next_slide()
+
+            highlight_code(pseudo_code_star, [7])
+            set_caption(caption_star, "Attach x_new using the selected parent x_min.")
+            new_edge = Line(parent_dot.get_center(), new_temp.get_center(), color=ORANGE, stroke_width=2.4)
+            self.play(Create(new_edge), new_temp.animate.set_color(ORANGE), run_time=1.0)
+            star_tree_dots[step["new_node"]] = new_temp
+            star_tree_edges[(parent, step["new_node"])] = new_edge
+            self.next_slide()
+
+            highlight_code(pseudo_code_star, [8, 9])
+            if len(step["rewired"]) == 0:
+                set_caption(caption_star, "Rewire check found no cheaper local alternatives this round.")
+                self.play(FadeOut(candidate_lines), run_time=0.6)
+            else:
+                set_caption(caption_star, "Rewire: some nearby nodes get cheaper paths through x_new.")
+                for rewired_node, old_parent, new_parent in step["rewired"]:
+                    if rewired_node not in star_tree_dots:
+                        continue
+                    rewired_dot = star_tree_dots[rewired_node]
+                    old_edge_key = (old_parent, rewired_node)
+                    if old_edge_key in star_tree_edges:
+                        self.play(FadeOut(star_tree_edges[old_edge_key]), run_time=0.35)
+                        del star_tree_edges[old_edge_key]
+                    new_edge_rewire = Line(star_tree_dots[new_parent].get_center(), rewired_dot.get_center(), color=PURPLE, stroke_width=2.6)
+                    self.play(Create(new_edge_rewire), rewired_dot.animate.set_color(PURPLE), run_time=0.7)
+                    star_tree_edges[(new_parent, rewired_node)] = new_edge_rewire
+                self.play(FadeOut(candidate_lines), run_time=0.4)
+
+            self.play(
+                FadeOut(rand_dot),
+                FadeOut(rand_label),
+                FadeOut(nearest_label),
+                FadeOut(line_to_rand),
+                FadeOut(steer_line),
+                FadeOut(new_label),
+                FadeOut(near_circle),
+                FadeOut(near_labels),
+                FadeOut(x_min_label),
+                parent_dot.animate.set_color(ORANGE),
+                run_time=0.9,
+            )
+            self.next_slide()
+
+        highlight_code(pseudo_code_star, [])
+        set_caption(caption_star, "RRT* repeats these local optimizations to improve path quality over time.")
+        self.next_slide()
+
+        self.play(*[FadeOut(mob) for mob in list(self.mobjects)])
+
+        # ---------------------------------------------------------
+        # SLIDE 5: Full-length RRT* Growth (slower)
+        # ---------------------------------------------------------
+        full_star_title = Tex(r"\textbf{RRT* Full Demonstration}", font_size=40, color=ORANGE).to_edge(UP)
+        self.play(FadeIn(full_star_title))
+
+        full_star_result = run_rrt_trace(
+            full_start,
+            full_goal,
+            full_obstacles,
+            full_width,
+            full_height,
+            max_iter=1600,
+            step_size=0.95,
+            star=True,
+            rng=random.Random(777),
+            goal_sample_rate=0.08,
+            radius=2.7,
+            terminate_on_goal=True,
+        )
+
+        map_full_star, to_coord_full_star, _, _ = build_map(
+            full_width,
+            full_height,
+            full_scale,
+            full_star_result["start"],
+            full_star_result["goal"],
+            full_obstacles,
+        )
+        map_full_star.to_edge(DOWN, buff=0.45)
+        self.play(FadeIn(map_full_star))
+
+        caption_full_star = Text("RRT* grows and rewires, spending more time to reduce total path cost.", font_size=21, color=LIGHT_GRAY).to_edge(DOWN).shift(UP * 0.1)
+        self.play(FadeIn(caption_full_star))
+        self.next_slide()
+
+        star_full_lines = []
+        for op in full_star_result["edits"]:
+            if op[0] == "add":
+                star_full_lines.append(Line(to_coord_full_star(op[1]), to_coord_full_star(op[2]), color=ORANGE, stroke_width=2))
+            elif op[0] == "rewire":
+                star_full_lines.append(Line(to_coord_full_star(op[3]), to_coord_full_star(op[1]), color=PURPLE, stroke_width=2.3))
+
+        batch_size_star = 30
+        for idx in range(0, len(star_full_lines), batch_size_star):
+            chunk = star_full_lines[idx:idx + batch_size_star]
+            if not chunk:
+                continue
+            self.play(LaggedStart(*[Create(line) for line in chunk], lag_ratio=0.08), run_time=2.9)
+            if idx % (batch_size_star * 2) == 0:
+                self.next_slide()
+
+        star_full_path = VGroup(
+            *[
+                Line(to_coord_full_star(full_star_result["path"][i]), to_coord_full_star(full_star_result["path"][i + 1]), color=PURPLE, stroke_width=6)
+                for i in range(max(0, len(full_star_result["path"]) - 1))
+            ]
+        )
+        self.play(Create(star_full_path), run_time=2.7)
+        set_caption(caption_full_star, "The final route is usually smoother and lower cost than plain RRT.")
+        self.next_slide()
+
+        self.play(*[FadeOut(mob) for mob in list(self.mobjects)])
+
+        # ---------------------------------------------------------
+        # SLIDE 6: Side-by-side comparison and conclusion
+        # ---------------------------------------------------------
+        compare_title = Tex(r"\textbf{RRT vs RRT* Outcome}", font_size=40, color=WHITE).to_edge(UP)
+        self.play(FadeIn(compare_title))
+
+        map_compare, to_coord_compare, _, _ = build_map(
+            full_width,
+            full_height,
+            full_scale,
+            full_rrt_result["start"],
+            full_rrt_result["goal"],
+            full_obstacles,
+        )
+        map_compare.to_edge(DOWN, buff=0.45)
+        self.play(FadeIn(map_compare))
+
+        compare_rrt_path = VGroup(
+            *[
+                Line(to_coord_compare(full_rrt_result["path"][i]), to_coord_compare(full_rrt_result["path"][i + 1]), color=YELLOW, stroke_width=4)
+                for i in range(max(0, len(full_rrt_result["path"]) - 1))
+            ]
+        )
+        compare_star_path = VGroup(
+            *[
+                Line(to_coord_compare(full_star_result["path"][i]), to_coord_compare(full_star_result["path"][i + 1]), color=PURPLE, stroke_width=6)
+                for i in range(max(0, len(full_star_result["path"]) - 1))
+            ]
+        )
+
+        legend_rrt = Text("RRT: fast exploration, suboptimal path", font_size=24, color=YELLOW).to_corner(UL).shift(DOWN * 0.95)
+        legend_star = Text("RRT*: rewiring improves path cost", font_size=24, color=PURPLE).next_to(legend_rrt, DOWN, aligned_edge=LEFT)
+        conclusion_caption = Text("RRT* adds local optimization, which makes it better for real robot deployment.", font_size=21, color=LIGHT_GRAY).to_edge(DOWN).shift(UP * 0.1)
+
+        self.play(Create(compare_rrt_path), FadeIn(legend_rrt), run_time=2.0)
+        self.play(Create(compare_star_path), FadeIn(legend_star), FadeIn(conclusion_caption), run_time=2.0)
+        self.next_slide()
+
+        self.play(*[FadeOut(mob) for mob in list(self.mobjects)])
+
+        end_text = Text("Conclusion", font_size=56)
+        self.play(Write(end_text))
+        self.next_slide()
+
 
 def main():
     print("Hello from rrt-par-presentation!")
