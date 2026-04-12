@@ -593,7 +593,7 @@ class MazePathPlanning(Slide):
         small_map_star.to_edge(RIGHT, buff=0.55).shift(DOWN * 0.35)
         self.play(FadeIn(small_map_star))
 
-        iter_label_star = Tex(r"\textbf{Iteration: }0", font_size=28, color=WHITE).to_corner(UR).shift(DOWN * 0.8)
+        iter_label_star = Tex(r"\textbf{Accepted Node: }0", font_size=28, color=WHITE).to_corner(UR).shift(DOWN * 0.8)
         caption_star = Text("RRT* uses the same samples, then optimizes local connections.", font_size=21, color=LIGHT_GRAY).to_edge(DOWN).shift(UP * 0.1)
         self.play(FadeIn(iter_label_star), FadeIn(caption_star))
         self.next_slide()
@@ -643,9 +643,9 @@ class MazePathPlanning(Slide):
                 self.play(*rewire_anims, run_time=0.14)
 
         if fast_forward_trace:
-            last_fast_forward_iter = fast_forward_trace[-1]["iteration"]
+            last_fast_forward_iter = len(fast_forward_trace)
             ff_iter_label = Tex(
-                rf"\textbf{{Iteration: }}{last_fast_forward_iter}",
+                rf"\textbf{{Accepted Node: }}{last_fast_forward_iter}",
                 font_size=28,
                 color=WHITE,
             ).to_corner(UR).shift(DOWN * 0.8)
@@ -657,8 +657,8 @@ class MazePathPlanning(Slide):
         )
         self.next_slide()
 
-        for step in selected_star_trace:
-            new_iter_label = Tex(rf"\textbf{{Iteration: }}{step['iteration']}", font_size=28, color=WHITE).to_corner(UR).shift(DOWN * 0.8)
+        for accepted_idx, step in enumerate(selected_star_trace, start=len(fast_forward_trace) + 1):
+            new_iter_label = Tex(rf"\textbf{{Accepted Node: }}{accepted_idx}", font_size=28, color=WHITE).to_corner(UR).shift(DOWN * 0.8)
             self.play(Transform(iter_label_star, new_iter_label), run_time=0.4)
 
             highlight_code(pseudo_code_star, [0])
