@@ -567,19 +567,22 @@ class MazePathPlanning(Slide):
         self.play(FadeIn(star_title))
 
         pseudo_code_star = VGroup(
-            Tex(r"$x_{rand} \leftarrow \text{SampleFree}(X_{free})$", font_size=21),
-            Tex(r"$x_{nearest} \leftarrow \text{Nearest}(\mathcal{T}, x_{rand})$", font_size=21),
-            Tex(r"$x_{new} \leftarrow \text{Steer}(x_{nearest}, x_{rand}, \Delta t)$", font_size=21),
-            Tex(r"\textbf{if} $\text{ObstacleFree}(x_{nearest}, x_{new})$ \textbf{then}", font_size=21),
-            Tex(r"$X_{near} \leftarrow \text{Near}(\mathcal{T}, x_{new}, r_n)$", font_size=21),
-            Tex(r"$x_{min} \leftarrow x_{nearest}, \; c_{min} \leftarrow c(x_{nearest}, x_{new})$", font_size=21),
-            Tex(r"\textbf{for each} $x_{near} \in X_{near}$: update $x_{min}$ if cheaper", font_size=21),
-            Tex(r"$\mathcal{T}.\text{add\_edge}(x_{min}, x_{new})$", font_size=21),
-            Tex(r"\textbf{for each} $x_{near} \in X_{near} \setminus \{x_{min}\}$", font_size=21),
-            Tex(r"\textbf{if cheaper via} $x_{new}$: \textbf{rewire}", font_size=21),
-        ).arrange(DOWN, aligned_edge=LEFT, buff=0.16).next_to(star_title, DOWN, buff=0.28).align_to(star_title, LEFT)
-        pseudo_code_star[6].shift(RIGHT * 0.45)
-        pseudo_code_star[9].shift(RIGHT * 0.45)
+            Tex(r"$x_{rand} \leftarrow \text{SampleFree}(X_{free})$", font_size=20),
+            Tex(r"$x_{nearest} \leftarrow \text{Nearest}(\mathcal{T}, x_{rand})$", font_size=20),
+            Tex(r"$x_{new} \leftarrow \text{Steer}(x_{nearest}, x_{rand}, \Delta t)$", font_size=20),
+            Tex(r"\textbf{if} $\text{ObstacleFree}(x_{nearest}, x_{new})$ \textbf{then}", font_size=20),
+            Tex(r"$X_{near} \leftarrow \text{Near}(\mathcal{T}, x_{new}, r_n)$", font_size=20),
+            Tex(r"$x_{min} \leftarrow x_{nearest}, \; c_{min} \leftarrow \text{Cost}(x_{nearest}) + c(\text{Line}(x_{nearest}, x_{new}))$", font_size=20),
+            Tex(r"\textbf{for each} $x_{near} \in X_{near}$", font_size=20),
+            Tex(r"\textbf{if} $\text{ObstacleFree}(x_{near}, x_{new})$ and cheaper: update $x_{min}$", font_size=20),
+            Tex(r"$\mathcal{T}.\text{add\_edge}(x_{min}, x_{new})$", font_size=20),
+            Tex(r"\textbf{for each} $x_{near} \in X_{near} \setminus \{x_{min}\}$", font_size=20),
+            Tex(r"\textbf{if} $\text{ObstacleFree}(x_{new}, x_{near})$ and cheaper: \textbf{rewire}", font_size=20),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.14).next_to(star_title, DOWN, buff=0.28).align_to(star_title, LEFT)
+        for idx in [4, 5, 6, 8, 9]:
+            pseudo_code_star[idx].shift(RIGHT * 0.45)
+        for idx in [7, 10]:
+            pseudo_code_star[idx].shift(RIGHT * 0.90)
         self.play(Write(pseudo_code_star), run_time=1.6)
 
         small_map_star, to_coord_small_star, _, _ = build_map(
@@ -718,7 +721,7 @@ class MazePathPlanning(Slide):
             self.play(Create(near_circle), FadeIn(near_labels), run_time=1.1)
             self.next_slide()
 
-            highlight_code(pseudo_code_star, [5, 6])
+            highlight_code(pseudo_code_star, [5, 6, 7])
             set_caption(caption_star, "Evaluate all candidate parents and pick the cheapest x_min.")
             candidate_lines = VGroup()
             for near_node in step["near_nodes"]:
@@ -734,7 +737,7 @@ class MazePathPlanning(Slide):
             self.play(parent_dot.animate.set_color(ORANGE), FadeIn(x_min_label), run_time=0.8)
             self.next_slide()
 
-            highlight_code(pseudo_code_star, [7])
+            highlight_code(pseudo_code_star, [8])
             set_caption(caption_star, "Attach x_new using the selected parent x_min.")
             new_edge = Line(parent_dot.get_center(), new_temp.get_center(), color=ORANGE, stroke_width=2.4)
             self.play(Create(new_edge), new_temp.animate.set_color(ORANGE), run_time=1.0)
@@ -742,7 +745,7 @@ class MazePathPlanning(Slide):
             star_tree_edges[(parent, step["new_node"])] = new_edge
             self.next_slide()
 
-            highlight_code(pseudo_code_star, [8, 9])
+            highlight_code(pseudo_code_star, [9, 10])
             if len(step["rewired"]) == 0:
                 set_caption(caption_star, "Rewire check found no cheaper local alternatives this round.")
                 self.play(FadeOut(candidate_lines), run_time=0.6)
