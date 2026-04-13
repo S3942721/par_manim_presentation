@@ -429,55 +429,68 @@ class MazePathPlanning(Slide):
             line.scale_to_fit_width(5.6)
             return VGroup(dot, line).arrange(RIGHT, buff=0.16, aligned_edge=UP)
 
+        intro_c_points_title = Text("Why this matters:", font_size=30, color=WHITE)
         intro_c_importance = VGroup(
             make_bullet("Safety: avoid collisions around people and assets."),
             make_bullet("Efficiency: reduce path length, time, and battery use."),
             make_bullet("Reliability: maintain performance in cluttered scenes."),
-            make_bullet("This is why strong planning is central to autonomy.", color=YELLOW),
-        ).arrange(DOWN, aligned_edge=LEFT, buff=0.2)
-        intro_c_importance.to_edge(LEFT, buff=0.55).shift(DOWN * 0.55)
+            make_bullet("Path planning is a core capability for autonomy.", color=YELLOW),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.18)
+        intro_c_points_block = VGroup(intro_c_points_title, intro_c_importance).arrange(DOWN, aligned_edge=LEFT, buff=0.2)
 
-        intro_c_images = Group()
-        image_specs = [
-            ("images/realtime-robotics.jpeg", "Autonomous car"),
-            ("images/robot-arm-planning.jpeg", "Industrial robot arm"),
-            ("images/racing-drones.jpeg", "Autonomous drone racing"),
-        ]
-        for image_path, label_text in image_specs:
-            frame = RoundedRectangle(width=4.15, height=1.55, corner_radius=0.08)
-            frame.set_fill(BLACK, opacity=0.2)
-            frame.set_stroke(GRAY, width=2)
-
+        def make_image_card(image_path, app_label, ref_text, max_width=4.0, max_height=1.95):
             image = ImageMobject(image_path)
             image.set_z_index(2)
-            image.width = 3.95
-            if image.height > 1.3:
-                image.height = 1.3
-            image.move_to(frame.get_center() + UP * 0.08)
+            image.scale_to_fit_width(max_width)
+            if image.height > max_height:
+                image.scale_to_fit_height(max_height)
 
-            label = Text(label_text, font_size=15, color=LIGHT_GRAY).next_to(frame, DOWN, buff=0.03)
-            intro_c_images.add(Group(frame, image, label))
+            frame = RoundedRectangle(
+                width=image.width + 0.22,
+                height=image.height + 0.22,
+                corner_radius=0.08,
+            )
+            frame.set_fill(BLACK, opacity=0.2)
+            frame.set_stroke(GRAY, width=2)
+            frame.move_to(image.get_center())
 
-        intro_c_images.arrange(DOWN, buff=0.2).to_edge(RIGHT, buff=0.52).shift(DOWN * 1.0)
+            caption_title = Text(app_label, font_size=16, color=WHITE)
+            caption_ref = Text(ref_text, font_size=11, color=GRAY)
+            caption_ref.scale_to_fit_width(frame.width)
+            caption = VGroup(caption_title, caption_ref).arrange(DOWN, aligned_edge=LEFT, buff=0.02)
+            caption.next_to(frame, DOWN, buff=0.08).align_to(frame, LEFT)
 
-        intro_c_caption = Text(
-            "Examples shown: autonomous cars, industrial manipulators, and racing drones.",
-            font_size=21,
-            color=LIGHT_GRAY,
-        ).to_edge(DOWN).shift(UP * 0.34)
+            return Group(frame, image, caption)
 
-        intro_c_source_note = Text(
-            "Image sources: Realtime Robotics (2019), Paes et al. (2014), IEEE Spectrum (2023).",
-            font_size=14,
-            color=GRAY,
-        ).to_edge(DOWN).shift(UP * 0.06)
+        intro_c_top_left_image = make_image_card(
+            "images/realtime-robotics.jpeg",
+            "Autonomous cars",
+            "(Solving the Autonomous Vehicles Motion Planning Conundrum, 2019)",
+        )
+        intro_c_top_right_image = make_image_card(
+            "images/robot-arm-planning.jpeg",
+            "Industrial robotics",
+            "(Paes et al., 2014)",
+        )
+        intro_c_bottom_right_image = make_image_card(
+            "images/racing-drones.jpeg",
+            "Autonomous drones",
+            "(IEEE Spectrum, 2023)",
+        )
+
+        # Keep each visual centered within its intended quadrant.
+        intro_c_top_left_image.move_to(LEFT * 3.45 + UP * 1.45)
+        intro_c_top_right_image.move_to(RIGHT * 3.45 + UP * 1.45)
+        intro_c_bottom_right_image.move_to(RIGHT * 3.45 + DOWN * 1.85)
+
+        intro_c_points_block.move_to(LEFT * 3.45 + DOWN * 1.95)
 
         self.play(FadeIn(intro_c_title), run_time=0.8)
         self.play(
-            FadeIn(intro_c_importance),
-            FadeIn(intro_c_images),
-            FadeIn(intro_c_caption),
-            FadeIn(intro_c_source_note),
+            FadeIn(intro_c_top_left_image),
+            FadeIn(intro_c_top_right_image),
+            FadeIn(intro_c_bottom_right_image),
+            FadeIn(intro_c_points_block),
             run_time=1.6,
         )
         self.next_slide()
@@ -487,32 +500,38 @@ class MazePathPlanning(Slide):
         # INTRO SLIDE D: Why this is hard to solve
         # ---------------------------------------------------------
         intro_d_title = Text("Why It Is Hard to Solve", font_size=48).to_edge(UP)
-        intro_d_left_title = Text("Key challenges:", font_size=31, color=WHITE).to_edge(LEFT, buff=0.55).shift(DOWN * 0.15)
+
+        def make_challenge_bullet(text, color=LIGHT_GRAY):
+            dot = Dot(radius=0.065, color=WHITE)
+            line = Text(text, font_size=27, color=color)
+            if line.width > 6.15:
+                line.scale_to_fit_width(6.15)
+            return VGroup(dot, line).arrange(RIGHT, buff=0.18, aligned_edge=UP)
+
+        intro_d_left_title = Text("Key complexities:", font_size=36, color=WHITE)
 
         intro_d_points = VGroup(
-            make_bullet("Configuration space grows rapidly with DOF."),
-            make_bullet("Obstacles create narrow valid corridors."),
-            make_bullet("Nonholonomic robots cannot move arbitrarily."),
-            make_bullet("We need speed first, then better path quality.", color=YELLOW),
-        ).arrange(DOWN, aligned_edge=LEFT, buff=0.2)
-        intro_d_points.next_to(intro_d_left_title, DOWN, aligned_edge=LEFT, buff=0.24)
+            make_challenge_bullet("Configuration space grows rapidly with DOF."),
+            make_challenge_bullet("Obstacles create narrow valid corridors."),
+            make_challenge_bullet("Nonholonomic robots cannot move arbitrarily."),
+            make_challenge_bullet("We need speed first, then better path quality.", color=YELLOW),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.24)
+        intro_d_left_block = VGroup(intro_d_left_title, intro_d_points).arrange(DOWN, aligned_edge=LEFT, buff=0.28)
+        intro_d_left_block.next_to(intro_d_title, DOWN, buff=0.54).to_edge(LEFT, buff=0.62)
 
         intro_d_visual = VGroup(
-            Tex(r"$\text{Search space} \sim k^d$", font_size=46, color=YELLOW),
-            Text("dimension increase drives combinatorial growth", font_size=19, color=LIGHT_GRAY),
+            VGroup(
+                Text("Search space grows roughly as", font_size=30, color=YELLOW),
+                MathTex(r"k^d", font_size=54, color=YELLOW),
+            ).arrange(RIGHT, buff=0.12, aligned_edge=DOWN),
+            Text("Higher dimension means many more states to evaluate.", font_size=24, color=LIGHT_GRAY),
             Arrow(LEFT * 2.2, RIGHT * 2.2, buff=0.0, color=BLUE),
-            Text("Need scalable planning methods", font_size=23, color=WHITE),
-        ).arrange(DOWN, buff=0.2)
-        intro_d_visual.to_edge(RIGHT, buff=0.75).shift(DOWN * 0.55)
-
-        intro_d_caption = Text(
-            "Sampling-based planners are designed to handle this complexity better than exhaustive grids.",
-            font_size=21,
-            color=LIGHT_GRAY,
-        ).to_edge(DOWN).shift(UP * 0.1)
+            Text("Need scalable planning methods", font_size=28, color=WHITE),
+        ).arrange(DOWN, buff=0.23)
+        intro_d_visual.to_corner(DR, buff=0.72).shift(DOWN * 0.22)
 
         self.play(FadeIn(intro_d_title), run_time=0.8)
-        self.play(FadeIn(intro_d_left_title), FadeIn(intro_d_points), FadeIn(intro_d_visual), FadeIn(intro_d_caption), run_time=1.5)
+        self.play(FadeIn(intro_d_left_block), FadeIn(intro_d_visual), run_time=1.5)
         self.next_slide()
         self.play(*[FadeOut(mob) for mob in list(self.mobjects)])
 
@@ -607,7 +626,7 @@ class MazePathPlanning(Slide):
             rrt_detail["goal"],
             small_obstacles,
         )
-        small_map_rrt.to_edge(RIGHT, buff=0.55).shift(DOWN * 0.35)
+        small_map_rrt.to_edge(RIGHT, buff=0.55).shift(RIGHT * 0.1 + DOWN * 0.35)
         self.play(FadeIn(small_map_rrt))
 
         iter_label_rrt = Tex(r"\textbf{Iteration: }0", font_size=28, color=WHITE).to_corner(UR).shift(DOWN * 0.8)
@@ -799,7 +818,7 @@ class MazePathPlanning(Slide):
             rrt_star_detail["goal"],
             small_obstacles,
         )
-        small_map_star.to_edge(RIGHT, buff=0.55).shift(DOWN * 0.35)
+        small_map_star.to_edge(RIGHT, buff=0.55).shift(RIGHT * 0.1 + DOWN * 0.35)
         self.play(FadeIn(small_map_star))
 
         iter_label_star = Tex(r"\textbf{Accepted Node: }0", font_size=28, color=WHITE).to_corner(UR).shift(DOWN * 0.8)
@@ -1113,16 +1132,16 @@ class MazePathPlanning(Slide):
         rrt_points = VGroup(
             Text("RRT", font_size=31, color=YELLOW),
             Text("+ Fast first feasible path", font_size=22),
-            Text("+ Probabilistically complete", font_size=22),
+            Text("+ Probabilistically complete (with infinite samples)", font_size=22),
             Text("+ Handles constrained motion", font_size=22),
             Text("- Suboptimal, jagged routes", font_size=22, color=RED),
-            Text("- Hard narrow passages", font_size=22, color=RED),
+            Text("- Chaotic tree growth", font_size=22, color=RED),
         ).arrange(DOWN, aligned_edge=LEFT, buff=0.12)
         rrt_points.move_to(rrt_box.get_center()).align_to(rrt_box, LEFT).shift(RIGHT * 0.35)
 
         star_points = VGroup(
             Text("RRT*", font_size=31, color=PURPLE),
-            Text("+ Asymptotically optimal", font_size=22),
+            Text("+ Asymptotically optimal (with infinite samples)", font_size=22),
             Text("+ Anytime path improvement", font_size=22),
             Text("+ Better final path quality", font_size=22),
             Text("- Slower first solution", font_size=22, color=RED),
