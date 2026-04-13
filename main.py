@@ -311,10 +311,216 @@ class MazePathPlanning(Slide):
             return map_group, to_coord, start_dot, goal_dot
 
         # ---------------------------------------------------------
+        # INTRO SLIDE A: Path planning fundamentals
+        # ---------------------------------------------------------
+        intro_a_title = Text("What Is Path Planning?", font_size=52).to_edge(UP)
+        intro_a_subtitle = Text(
+            "Find a collision-free route from start A to goal B in free space.",
+            font_size=28,
+            color=LIGHT_GRAY,
+        ).next_to(intro_a_title, DOWN, buff=0.3)
+
+        intro_a_world = Rectangle(width=8.8, height=4.9)
+        intro_a_world.set_fill(DARK_GRAY, opacity=1.0)
+        intro_a_world.set_stroke(WHITE, width=2)
+        intro_a_world.shift(DOWN * 0.35)
+
+        intro_a_start = Dot(intro_a_world.get_left() + RIGHT * 1.0 + DOWN * 1.4, color=GREEN).scale(1.2)
+        intro_a_goal = Dot(intro_a_world.get_right() + LEFT * 1.0 + UP * 1.4, color=RED).scale(1.2)
+        intro_a_start_label = Text("A", font_size=24, color=GREEN).next_to(intro_a_start, DOWN, buff=0.08)
+        intro_a_goal_label = Text("B", font_size=24, color=RED).next_to(intro_a_goal, DOWN, buff=0.08)
+        intro_a_line = Line(intro_a_start.get_center(), intro_a_goal.get_center(), color=YELLOW, stroke_width=5)
+
+        intro_a_caption = Text(
+            "Without obstacles, a direct route is usually feasible.",
+            font_size=22,
+            color=LIGHT_GRAY,
+        ).to_edge(DOWN).shift(UP * 0.1)
+
+        self.play(FadeIn(intro_a_title), FadeIn(intro_a_subtitle), FadeIn(intro_a_world), run_time=1.1)
+        self.play(
+            FadeIn(intro_a_start),
+            FadeIn(intro_a_goal),
+            FadeIn(intro_a_start_label),
+            FadeIn(intro_a_goal_label),
+            run_time=0.9,
+        )
+        self.play(Create(intro_a_line), FadeIn(intro_a_caption), run_time=1.0)
+        self.next_slide()
+        self.play(*[FadeOut(mob) for mob in list(self.mobjects)])
+
+        # ---------------------------------------------------------
+        # INTRO SLIDE B: Obstacles break the straight-line solution
+        # ---------------------------------------------------------
+        intro_b_title = Text("Now Add Obstacles", font_size=50, color=WHITE).to_edge(UP)
+        intro_b_subtitle = Text(
+            "A naive straight line can collide with forbidden space.",
+            font_size=28,
+            color=LIGHT_GRAY,
+        ).next_to(intro_b_title, DOWN, buff=0.3)
+
+        intro_b_world = Rectangle(width=8.8, height=4.9)
+        intro_b_world.set_fill(DARK_GRAY, opacity=1.0)
+        intro_b_world.set_stroke(WHITE, width=2)
+        intro_b_world.shift(DOWN * 0.35)
+
+        intro_b_start = Dot(intro_b_world.get_left() + RIGHT * 1.0 + DOWN * 1.4, color=GREEN).scale(1.2)
+        intro_b_goal = Dot(intro_b_world.get_right() + LEFT * 1.0 + UP * 1.4, color=RED).scale(1.2)
+        intro_b_start_label = Text("A", font_size=24, color=GREEN).next_to(intro_b_start, DOWN, buff=0.08)
+        intro_b_goal_label = Text("B", font_size=24, color=RED).next_to(intro_b_goal, DOWN, buff=0.08)
+
+        intro_b_obstacle_1 = Rectangle(width=1.6, height=2.6)
+        intro_b_obstacle_1.set_fill(WHITE, opacity=1.0)
+        intro_b_obstacle_1.set_stroke(WHITE, opacity=1.0)
+        intro_b_obstacle_1.move_to(intro_b_world.get_center() + LEFT * 0.8 + DOWN * 0.1)
+
+        intro_b_obstacle_2 = Rectangle(width=1.8, height=1.6)
+        intro_b_obstacle_2.set_fill(WHITE, opacity=1.0)
+        intro_b_obstacle_2.set_stroke(WHITE, opacity=1.0)
+        intro_b_obstacle_2.move_to(intro_b_world.get_center() + RIGHT * 1.4 + UP * 0.95)
+
+        intro_b_blocked_line = Line(intro_b_start.get_center(), intro_b_goal.get_center(), color=RED, stroke_width=5)
+        intro_b_mid = intro_b_blocked_line.point_from_proportion(0.52)
+        intro_b_collision_mark = VGroup(
+            Line(intro_b_mid + LEFT * 0.28 + UP * 0.28, intro_b_mid + RIGHT * 0.28 + DOWN * 0.28, color=RED, stroke_width=6),
+            Line(intro_b_mid + LEFT * 0.28 + DOWN * 0.28, intro_b_mid + RIGHT * 0.28 + UP * 0.28, color=RED, stroke_width=6),
+        )
+
+        # Route below both obstacles, then climb on the far right to stay collision-free.
+        intro_b_waypoint_1 = intro_b_start.get_center() + RIGHT * 0.7 + DOWN * 0.55
+        intro_b_waypoint_2 = intro_b_world.get_right() + LEFT * 1.0 + DOWN * 1.95
+        intro_b_waypoint_3 = intro_b_world.get_right() + LEFT * 1.0 + UP * 1.1
+        intro_b_detour = VGroup(
+            Line(intro_b_start.get_center(), intro_b_waypoint_1, color=BLUE, stroke_width=5),
+            Line(intro_b_waypoint_1, intro_b_waypoint_2, color=BLUE, stroke_width=5),
+            Line(intro_b_waypoint_2, intro_b_waypoint_3, color=BLUE, stroke_width=5),
+            Line(intro_b_waypoint_3, intro_b_goal.get_center(), color=BLUE, stroke_width=5),
+        )
+
+        intro_b_caption = Text(
+            "This is why autonomous robots need search-based planners.",
+            font_size=22,
+            color=LIGHT_GRAY,
+        ).to_edge(DOWN).shift(UP * 0.1)
+
+        self.play(FadeIn(intro_b_title), FadeIn(intro_b_subtitle), FadeIn(intro_b_world), run_time=1.0)
+        self.play(
+            FadeIn(intro_b_start),
+            FadeIn(intro_b_goal),
+            FadeIn(intro_b_start_label),
+            FadeIn(intro_b_goal_label),
+            FadeIn(intro_b_obstacle_1),
+            FadeIn(intro_b_obstacle_2),
+            run_time=1.0,
+        )
+        self.play(Create(intro_b_blocked_line), Create(intro_b_collision_mark), run_time=0.9)
+        self.play(Create(intro_b_detour), FadeIn(intro_b_caption), run_time=1.2)
+        self.next_slide()
+        self.play(*[FadeOut(mob) for mob in list(self.mobjects)])
+
+        # ---------------------------------------------------------
+        # INTRO SLIDE C: Why this problem matters (image-driven)
+        # ---------------------------------------------------------
+        intro_c_title = Text("Why Path Planning Matters", font_size=50).to_edge(UP)
+
+        def make_bullet(text, font_size=20, color=LIGHT_GRAY):
+            dot = Dot(radius=0.055, color=WHITE)
+            line = Text(text, font_size=font_size, color=color)
+            line.scale_to_fit_width(5.6)
+            return VGroup(dot, line).arrange(RIGHT, buff=0.16, aligned_edge=UP)
+
+        intro_c_importance = VGroup(
+            make_bullet("Safety: avoid collisions around people and assets."),
+            make_bullet("Efficiency: reduce path length, time, and battery use."),
+            make_bullet("Reliability: maintain performance in cluttered scenes."),
+            make_bullet("This is why strong planning is central to autonomy.", color=YELLOW),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.2)
+        intro_c_importance.to_edge(LEFT, buff=0.55).shift(DOWN * 0.55)
+
+        intro_c_images = Group()
+        image_specs = [
+            ("images/realtime-robotics.jpeg", "Autonomous car"),
+            ("images/robot-arm-planning.jpeg", "Industrial robot arm"),
+            ("images/racing-drones.jpeg", "Autonomous drone racing"),
+        ]
+        for image_path, label_text in image_specs:
+            frame = RoundedRectangle(width=4.15, height=1.55, corner_radius=0.08)
+            frame.set_fill(BLACK, opacity=0.2)
+            frame.set_stroke(GRAY, width=2)
+
+            image = ImageMobject(image_path)
+            image.set_z_index(2)
+            image.width = 3.95
+            if image.height > 1.3:
+                image.height = 1.3
+            image.move_to(frame.get_center() + UP * 0.08)
+
+            label = Text(label_text, font_size=15, color=LIGHT_GRAY).next_to(frame, DOWN, buff=0.03)
+            intro_c_images.add(Group(frame, image, label))
+
+        intro_c_images.arrange(DOWN, buff=0.2).to_edge(RIGHT, buff=0.52).shift(DOWN * 1.0)
+
+        intro_c_caption = Text(
+            "Examples shown: autonomous cars, industrial manipulators, and racing drones.",
+            font_size=21,
+            color=LIGHT_GRAY,
+        ).to_edge(DOWN).shift(UP * 0.34)
+
+        intro_c_source_note = Text(
+            "Image sources: Realtime Robotics (2019), Paes et al. (2014), IEEE Spectrum (2023).",
+            font_size=14,
+            color=GRAY,
+        ).to_edge(DOWN).shift(UP * 0.06)
+
+        self.play(FadeIn(intro_c_title), run_time=0.8)
+        self.play(
+            FadeIn(intro_c_importance),
+            FadeIn(intro_c_images),
+            FadeIn(intro_c_caption),
+            FadeIn(intro_c_source_note),
+            run_time=1.6,
+        )
+        self.next_slide()
+        self.play(*[FadeOut(mob) for mob in list(self.mobjects)])
+
+        # ---------------------------------------------------------
+        # INTRO SLIDE D: Why this is hard to solve
+        # ---------------------------------------------------------
+        intro_d_title = Text("Why It Is Hard to Solve", font_size=48).to_edge(UP)
+        intro_d_left_title = Text("Key challenges:", font_size=31, color=WHITE).to_edge(LEFT, buff=0.55).shift(DOWN * 0.15)
+
+        intro_d_points = VGroup(
+            make_bullet("Configuration space grows rapidly with DOF."),
+            make_bullet("Obstacles create narrow valid corridors."),
+            make_bullet("Nonholonomic robots cannot move arbitrarily."),
+            make_bullet("We need speed first, then better path quality.", color=YELLOW),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.2)
+        intro_d_points.next_to(intro_d_left_title, DOWN, aligned_edge=LEFT, buff=0.24)
+
+        intro_d_visual = VGroup(
+            Tex(r"$\text{Search space} \sim k^d$", font_size=46, color=YELLOW),
+            Text("dimension increase drives combinatorial growth", font_size=19, color=LIGHT_GRAY),
+            Arrow(LEFT * 2.2, RIGHT * 2.2, buff=0.0, color=BLUE),
+            Text("Need scalable planning methods", font_size=23, color=WHITE),
+        ).arrange(DOWN, buff=0.2)
+        intro_d_visual.to_edge(RIGHT, buff=0.75).shift(DOWN * 0.55)
+
+        intro_d_caption = Text(
+            "Sampling-based planners are designed to handle this complexity better than exhaustive grids.",
+            font_size=21,
+            color=LIGHT_GRAY,
+        ).to_edge(DOWN).shift(UP * 0.1)
+
+        self.play(FadeIn(intro_d_title), run_time=0.8)
+        self.play(FadeIn(intro_d_left_title), FadeIn(intro_d_points), FadeIn(intro_d_visual), FadeIn(intro_d_caption), run_time=1.5)
+        self.next_slide()
+        self.play(*[FadeOut(mob) for mob in list(self.mobjects)])
+
+        # ---------------------------------------------------------
         # SLIDE 1: Title and Context
         # ---------------------------------------------------------
         title1 = Text("Path Planning in Robotics", font_size=50).shift(UP * 1.1)
-        title2 = Text("RRT and RRT*", font_size=52, color=BLUE).next_to(title1, DOWN, buff=0.25)
+        title2 = Text("RRT* for Optimised Path Planning", font_size=52, color=BLUE).next_to(title1, DOWN, buff=0.25)
         subtitle = Text("Fast Exploration vs Optimal Navigation", font_size=30, color=LIGHT_GREY).next_to(title2, DOWN, buff=0.4)
 
         refs = VGroup(
@@ -378,7 +584,7 @@ class MazePathPlanning(Slide):
         # ---------------------------------------------------------
         # SLIDE 2: Hyper-detailed RRT Iterations
         # ---------------------------------------------------------
-        rrt_title = Tex(r"\textbf{RRT: Iteration-by-Iteration Execution}", font_size=40, color=BLUE).to_corner(UL)
+        rrt_title = Tex(r"\textbf{RRT: How does it work?}", font_size=40, color=BLUE).to_corner(UL)
         self.play(FadeIn(rrt_title))
 
         pseudo_code_rrt = VGroup(
@@ -889,8 +1095,127 @@ class MazePathPlanning(Slide):
 
         self.play(*[FadeOut(mob) for mob in list(self.mobjects)])
 
-        end_text = Text("Conclusion", font_size=56)
-        self.play(Write(end_text))
+        # ---------------------------------------------------------
+        # OUTRO SLIDE A: Strengths and drawbacks
+        # ---------------------------------------------------------
+        summary_title = Text("RRT and RRT* Strengths and Drawbacks", font_size=42).to_edge(UP)
+
+        rrt_box = RoundedRectangle(width=6.0, height=4.9, corner_radius=0.14)
+        rrt_box.set_fill(DARK_GRAY, opacity=0.55)
+        rrt_box.set_stroke(YELLOW, width=2)
+        rrt_box.to_corner(UL).shift(DOWN * 1.0 + RIGHT * 0.2)
+
+        star_box = RoundedRectangle(width=6.0, height=4.9, corner_radius=0.14)
+        star_box.set_fill(DARK_GRAY, opacity=0.55)
+        star_box.set_stroke(PURPLE, width=2)
+        star_box.to_corner(UR).shift(DOWN * 1.0 + LEFT * 0.2)
+
+        rrt_points = VGroup(
+            Text("RRT", font_size=31, color=YELLOW),
+            Text("+ Fast first feasible path", font_size=22),
+            Text("+ Probabilistically complete", font_size=22),
+            Text("+ Handles constrained motion", font_size=22),
+            Text("- Suboptimal, jagged routes", font_size=22, color=RED),
+            Text("- Hard narrow passages", font_size=22, color=RED),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.12)
+        rrt_points.move_to(rrt_box.get_center()).align_to(rrt_box, LEFT).shift(RIGHT * 0.35)
+
+        star_points = VGroup(
+            Text("RRT*", font_size=31, color=PURPLE),
+            Text("+ Asymptotically optimal", font_size=22),
+            Text("+ Anytime path improvement", font_size=22),
+            Text("+ Better final path quality", font_size=22),
+            Text("- Slower first solution", font_size=22, color=RED),
+            Text("- Extra rewiring overhead", font_size=22, color=RED),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.12)
+        star_points.move_to(star_box.get_center()).align_to(star_box, LEFT).shift(RIGHT * 0.35)
+
+        summary_caption = Text(
+            "Use RRT for speed, and RRT* when long-run path quality matters.",
+            font_size=22,
+            color=LIGHT_GRAY,
+        ).to_edge(DOWN).shift(UP * 0.1)
+
+        self.play(FadeIn(summary_title), FadeIn(rrt_box), FadeIn(star_box), run_time=1.0)
+        self.play(FadeIn(rrt_points), FadeIn(star_points), FadeIn(summary_caption), run_time=1.2)
+        self.next_slide()
+        self.play(*[FadeOut(mob) for mob in list(self.mobjects)])
+
+        # ---------------------------------------------------------
+        # OUTRO SLIDE B: PAR relevance and practical limitations
+        # ---------------------------------------------------------
+        relevance_title = Text("Deployment Reality and PAR Relevance", font_size=44).to_edge(UP)
+
+        relevance_points = VGroup(
+            Text("Persistent static maps are the strongest use case.", font_size=25),
+            Text("Map changes can invalidate tree edges and force replanning.", font_size=25),
+            Text("RRT* improves cost but adds near-neighbor and rewiring time.", font_size=25),
+            Text("Higher dimensions stay tractable, but sample demand rises.", font_size=25),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.2).to_corner(UL).shift(DOWN * 1.25 + RIGHT * 0.5)
+
+        relevance_formula = Tex(r"$r_n \propto (\log n / n)^{1/d}$", font_size=40, color=YELLOW)
+        relevance_formula.next_to(relevance_points, DOWN, buff=0.45).align_to(relevance_points, LEFT)
+
+        relevance_caption = Text(
+            "In PAR projects, this tradeoff directly affects energy, safety, and mission time.",
+            font_size=22,
+            color=LIGHT_GRAY,
+        ).to_edge(DOWN).shift(UP * 0.1)
+
+        self.play(FadeIn(relevance_title), FadeIn(relevance_points), run_time=1.2)
+        self.play(FadeIn(relevance_formula), FadeIn(relevance_caption), run_time=1.0)
+        self.next_slide()
+        self.play(*[FadeOut(mob) for mob in list(self.mobjects)])
+
+        # ---------------------------------------------------------
+        # OUTRO SLIDE C: References (final slide)
+        # ---------------------------------------------------------
+        refs_title_final = Text("References", font_size=56).to_edge(UP)
+
+        ref_1 = Text(
+            "[1] LaValle, S. M. (1998). Rapidly-exploring random trees: A new tool for\n"
+            "     path planning. Technical Report, Iowa State University.",
+            font_size=18,
+            color=WHITE,
+        )
+        ref_2 = Text(
+            "[2] Karaman, S., and Frazzoli, E. (2011). Sampling-based algorithms\n"
+            "     for optimal motion planning. International Journal of Robotics\n"
+            "     Research, 30(7), 846-894.",
+            font_size=18,
+            color=WHITE,
+        )
+        ref_3 = Text(
+            "[3] Realtime Robotics (2019). Solving the Autonomous Vehicles Motion\n"
+            "     Planning Conundrum. https://rtr.ai/resources/solving-the-autonomous-\n"
+            "     vehicles-motion-planning-conundrum/",
+            font_size=18,
+            color=WHITE,
+        )
+        ref_4 = Text(
+            "[4] Paes, K., Dewulf, W., Elst, K., Kellens, K., and Slaets, P. (2014).\n"
+            "     Energy Efficient Trajectories for an Industrial ABB Robot.\n"
+            "     Procedia CIRP, 15, 105-110. doi:10.1016/j.procir.2014.06.043",
+            font_size=18,
+            color=WHITE,
+        )
+        ref_5 = Text(
+            "[5] IEEE Spectrum (2023). Superhuman Speed: How Autonomous Drones\n"
+            "     Beat the Best Human Racers. https://spectrum.ieee.org/ai-drone-racing",
+            font_size=18,
+            color=WHITE,
+        )
+
+        refs_group_final = VGroup(ref_1, ref_2, ref_3, ref_4, ref_5).arrange(DOWN, aligned_edge=LEFT, buff=0.23)
+        refs_group_final.next_to(refs_title_final, DOWN, buff=0.42).to_edge(LEFT, buff=0.45)
+
+        refs_caption_final = Text(
+            "Includes foundational papers and image sources used in the introduction.",
+            font_size=18,
+            color=LIGHT_GRAY,
+        ).to_edge(DOWN).shift(UP * 0.1)
+
+        self.play(FadeIn(refs_title_final), FadeIn(refs_group_final), FadeIn(refs_caption_final), run_time=1.4)
         self.next_slide()
 
 
