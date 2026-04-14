@@ -1190,9 +1190,9 @@ class MazePathPlanning(Slide):
         family_box.to_corner(UR).shift(DOWN * 1.5 + LEFT * 0.5)
 
         family_title = Text("Algorithm Extensions", font_size=28, color=GREEN)
-        family_bullet1 = Text("• Informed RRT*: Elliptical subset search", font_size=20)
-        family_bullet2 = Text("• Anytime RRT*: Real-time trajectory execution", font_size=20)
-        family_bullet3 = Text("• Bridges gap between speed & optimality", font_size=20)
+        family_bullet1 = Text("• Informed RRT*: Elliptical subset search", font_size=18)
+        family_bullet2 = Text("• Anytime RRT*: Real-time trajectory \n   execution", font_size=18)
+        family_bullet3 = Text("• Bridges gap between speed & optimality", font_size=18)
         family_points = VGroup(family_title, family_bullet1, family_bullet2, family_bullet3).arrange(DOWN, aligned_edge=LEFT, buff=0.2)
         family_points.move_to(family_box.get_center())
 
@@ -1216,73 +1216,62 @@ class MazePathPlanning(Slide):
         # ---------------------------------------------------------
         refs_title_final = Text("References", font_size=56).to_edge(UP)
 
+        ref_scale = 15
+
         ref_1 = Text(
-            "[1] LaValle, S. M. (1998). Rapidly-exploring random trees: A new tool for\n"
-            "     path planning. Technical Report, Iowa State University.",
-            font_size=18,
+            "[1] LaValle, S. M. (1998). Rapidly-exploring random trees: A new tool for path planning. Technical Report, Iowa State University.",
+            font_size=ref_scale,
             color=WHITE,
         )
         ref_2 = Text(
-            "[2] Karaman, S., and Frazzoli, E. (2011). Sampling-based algorithms\n"
-            "     for optimal motion planning. International Journal of Robotics\n"
-            "     Research, 30(7), 846-894.",
-            font_size=18,
+            "[2] Karaman, S., and Frazzoli, E. (2011). Sampling-based algorithms for optimal motion planning. International Journal of Robotics\n\t Research, 30(7), 846-894.",
+            font_size=ref_scale,
             color=WHITE,
         )
         ref_3 = Text(
-            "[3] Realtime Robotics (2019). Solving the Autonomous Vehicles Motion\n"
-            "     Planning Conundrum. https://rtr.ai/resources/solving-the-autonomous-\n"
-            "     vehicles-motion-planning-conundrum/",
-            font_size=18,
+            "[3] Realtime Robotics (2019). Solving the Autonomous Vehicles Motion Planning Conundrum.",
+            font_size=ref_scale,
             color=WHITE,
         )
         ref_4 = Text(
-            "[4] Paes, K., Dewulf, W., Elst, K., Kellens, K., and Slaets, P. (2014).\n"
-            "     Energy Efficient Trajectories for an Industrial ABB Robot.\n"
-            "     Procedia CIRP, 15, 105-110. doi:10.1016/j.procir.2014.06.043",
-            font_size=18,
+            "[4] Paes, K. et al. (2014). Energy Efficient Trajectories for an Industrial ABB Robot. Procedia CIRP, 15, 105-110.",
+            font_size=ref_scale,
             color=WHITE,
         )
         ref_5 = Text(
-            "[5] IEEE Spectrum (2023). Superhuman Speed: How Autonomous Drones\n"
-            "     Beat the Best Human Racers. https://spectrum.ieee.org/ai-drone-racing",
-            font_size=18,
+            "[5] IEEE Spectrum (2023). Superhuman Speed: How Autonomous Drones Beat the Best Human Racers.",
+            font_size=ref_scale,
             color=WHITE,
         )
-        
         ref_6 = Text(
             "[6] Elbanhawi, M., & Simic, M. (2014). Sampling-Based Robot Motion Planning: A Review. IEEE Access.",
-            font_size=18,
+            font_size=ref_scale,
             color=WHITE,
         )
-        
         ref_7 = Text(
-            "[7] Gammell, J. D., Srinivasa, S. S., & Barfoot, T. D. (2014). Informed RRT*: Optimal sampling-based path planning focused via direct sampling\n"
-            "     of an admissible ellipsoidal heuristic. IROS.",
-            font_size=18,
+            "[7] Gammell, J. D. et al. (2014). Informed RRT*: Optimal sampling-based path planning focused via direct sampling. IROS.",
+            font_size=ref_scale,
             color=WHITE,
         )
-        
         ref_8 = Text(
-            "[8] Noreen, I., Khan, A., & Habib, Z. (2016). Optimal Path Planning using RRT* based Approaches: A Survey and Future Directions. IJACSA.",
-            font_size=18,
+            "[8] Noreen, I., Khan, A., & Habib, Z. (2016). Optimal Path Planning using RRT* based Approaches: A Survey and Future Directions.\n\t IJACSA.",
+            font_size=ref_scale,
             color=WHITE,
         )
-        
         ref_9 = Text(
-            "[9] Karaman, S., Walter, M. R., Perez, A., Frazzoli, E., & Teller, S. (2011). Anytime Motion Planning using the RRT*. ICRA.",
-            font_size=18,
+            "[9] Karaman, S. et al. (2011). Anytime Motion Planning using the RRT*. ICRA.",
+            font_size=ref_scale,
             color=WHITE,
         )
         
-        refs_group_final = VGroup(ref_1, ref_2, ref_3, ref_4, ref_5, ref_6, ref_7, ref_8, ref_9).arrange(DOWN, aligned_edge=LEFT, buff=0.23)
-        refs_group_final.next_to(refs_title_final, DOWN, buff=0.42).to_edge(LEFT, buff=0.45)
+        refs_group_final = VGroup(ref_1, ref_2, ref_3, ref_4, ref_5, ref_6, ref_7, ref_8, ref_9).arrange(DOWN, aligned_edge=LEFT, buff=0.18)
+        refs_group_final.move_to(ORIGIN).shift(UP * 0.2)
 
         refs_caption_final = Text(
-            "Parts of these animations were rendered from code generated from Generative AI tools (LLMs), largely GPT-5.3-Codex.",
-            font_size=20,
+            "Parts of these animations were rendered from code generated from Generative AI tools (LLMs)",
+            font_size=18,
             color=LIGHT_GRAY,
-        ).to_edge(DOWN).shift(UP * 0.2)
+        ).to_edge(DOWN).shift(UP * 0.1)
 
         self.play(FadeIn(refs_title_final), FadeIn(refs_group_final), FadeIn(refs_caption_final), run_time=1.4)
         self.next_slide()
