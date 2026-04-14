@@ -543,8 +543,8 @@ class MazePathPlanning(Slide):
         subtitle = Text("Fast Exploration vs Optimal Navigation", font_size=30, color=LIGHT_GREY).next_to(title2, DOWN, buff=0.4)
 
         refs = VGroup(
-            Text("LaValle (1998): Rapidly-exploring Random Trees", font_size=22),
-            Text("Karaman and Frazzoli (2011): Asymptotic Optimality", font_size=22),
+            Text("[1] LaValle (1998): Rapidly-exploring Random Trees", font_size=22),
+            Text("[2] Karaman & Frazzoli (2011): Asymptotic Optimality", font_size=22),
         ).arrange(DOWN, aligned_edge=LEFT, buff=0.15).next_to(subtitle, DOWN, buff=0.8)
 
         self.play(Write(title1), Write(title2), run_time=1.4)
@@ -631,7 +631,8 @@ class MazePathPlanning(Slide):
 
         iter_label_rrt = Tex(r"\textbf{Iteration: }0", font_size=28, color=WHITE).to_corner(UR).shift(DOWN * 0.8)
         caption_rrt = Text("We now run RRT line-by-line using seeded random samples.", font_size=21, color=LIGHT_GRAY).to_edge(DOWN).shift(UP * 0.1)
-        self.play(FadeIn(iter_label_rrt), FadeIn(caption_rrt))
+        footnote_rrt = Text("[1] LaValle, S. M. (1998). Rapidly-exploring random trees", font_size=16, color=GRAY).to_corner(DL).shift(RIGHT * 0.1 + UP * 0.05)
+        self.play(FadeIn(iter_label_rrt), FadeIn(caption_rrt), FadeIn(footnote_rrt))
         self.next_slide()
 
         rrt_tree_dots = {rrt_detail["start"]: small_map_rrt[-2]}
@@ -823,7 +824,9 @@ class MazePathPlanning(Slide):
 
         iter_label_star = Tex(r"\textbf{Accepted Node: }0", font_size=28, color=WHITE).to_corner(UR).shift(DOWN * 0.8)
         caption_star = Text("RRT* uses the same samples, then optimizes local connections.", font_size=21, color=LIGHT_GRAY).to_edge(DOWN).shift(UP * 0.1)
-        self.play(FadeIn(iter_label_star), FadeIn(caption_star))
+        footnote_star = Text("[2] Karaman & Frazzoli (2011). Sampling-based algorithms for optimal motion planning.", font_size=16, color=GRAY).to_corner(DL).shift(RIGHT * 0.1 + UP * 0.05)
+        
+        self.play(FadeIn(iter_label_star), FadeIn(caption_star), FadeIn(footnote_star))
         self.next_slide()
 
         star_tree_dots = {rrt_star_detail["start"]: small_map_star[-2]}
