@@ -789,7 +789,7 @@ class MazePathPlanning(Slide):
         # ---------------------------------------------------------
         # SLIDE 4: Hyper-detailed RRT* Iterations
         # ---------------------------------------------------------
-        star_title = Tex(r"\textbf{RRT* Line-by-Line Optimization}", font_size=40, color=ORANGE).to_corner(UL)
+        star_title = Tex(r"\textbf{RRT* Line-by-Line Optimisation}", font_size=40, color=ORANGE).to_corner(UL)
         self.play(FadeIn(star_title))
 
         pseudo_code_star = VGroup(
@@ -1008,7 +1008,7 @@ class MazePathPlanning(Slide):
             self.next_slide()
 
         highlight_code(pseudo_code_star, [])
-        set_caption(caption_star, "RRT* repeats these local optimizations to improve path quality over time.")
+        set_caption(caption_star, "RRT* repeats these local optimisations to improve path quality over time.")
         self.next_slide()
 
         self.play(*[FadeOut(mob) for mob in list(self.mobjects)])
@@ -1109,7 +1109,7 @@ class MazePathPlanning(Slide):
 
         legend_rrt = Text("RRT: fast exploration, suboptimal path", font_size=24, color=YELLOW).to_corner(UL).shift(DOWN * 0.95)
         legend_star = Text("RRT*: rewiring improves path cost", font_size=24, color=PURPLE).next_to(legend_rrt, DOWN, aligned_edge=LEFT)
-        conclusion_caption = Text("RRT* adds local optimization, which makes it better for real robot deployment.", font_size=21, color=LIGHT_GRAY).to_edge(DOWN).shift(UP * 0.1)
+        conclusion_caption = Text("RRT* adds local optimisation, which makes it better for real robot deployment.", font_size=21, color=LIGHT_GRAY).to_edge(DOWN).shift(UP * 0.1)
 
         self.play(Create(compare_rrt_path), FadeIn(legend_rrt), run_time=2.0)
         self.play(Create(compare_star_path), FadeIn(legend_star), FadeIn(conclusion_caption), run_time=2.0)
