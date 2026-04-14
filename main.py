@@ -1166,28 +1166,48 @@ class MazePathPlanning(Slide):
         self.play(*[FadeOut(mob) for mob in list(self.mobjects)])
 
         # ---------------------------------------------------------
-        # OUTRO SLIDE B: PAR relevance and practical limitations
+        # OUTRO SLIDE B: Relevance and Extended Impact
         # ---------------------------------------------------------
-        relevance_title = Text("Deployment Reality and PAR Relevance", font_size=44).to_edge(UP)
+        relevance_title = Text("Significance & Extended Impact", font_size=44).to_edge(UP)
 
-        relevance_points = VGroup(
-            Text("Persistent static maps are the strongest use case.", font_size=25),
-            Text("Map changes can invalidate tree edges and force replanning.", font_size=25),
-            Text("RRT* improves cost but adds near-neighbor and rewiring time.", font_size=25),
-            Text("Higher dimensions stay tractable, but sample demand rises.", font_size=25),
-        ).arrange(DOWN, aligned_edge=LEFT, buff=0.2).to_corner(UL).shift(DOWN * 1.25 + RIGHT * 0.5)
+        # Real-world impact box
+        impact_box = RoundedRectangle(width=5.5, height=3.5, corner_radius=0.14)
+        impact_box.set_fill(DARK_GRAY, opacity=0.55)
+        impact_box.set_stroke(BLUE, width=2)
+        impact_box.to_corner(UL).shift(DOWN * 1.5 + RIGHT * 0.5)
 
-        relevance_formula = Tex(r"$r_n \propto (\log n / n)^{1/d}$", font_size=40, color=YELLOW)
-        relevance_formula.next_to(relevance_points, DOWN, buff=0.45).align_to(relevance_points, LEFT)
+        impact_title = Text("Real-World Deployment", font_size=28, color=BLUE)
+        impact_bullet1 = Text("• Reduces robot battery waste", font_size=20)
+        impact_bullet2 = Text("• Minimises actuator wear", font_size=20)
+        impact_bullet3 = Text("• Ideal for UAVs & car-like robots", font_size=20)
+        impact_points = VGroup(impact_title, impact_bullet1, impact_bullet2, impact_bullet3).arrange(DOWN, aligned_edge=LEFT, buff=0.2)
+        impact_points.move_to(impact_box.get_center())
+
+        # Family of Algorithms box
+        family_box = RoundedRectangle(width=5.5, height=3.5, corner_radius=0.14)
+        family_box.set_fill(DARK_GRAY, opacity=0.55)
+        family_box.set_stroke(GREEN, width=2)
+        family_box.to_corner(UR).shift(DOWN * 1.5 + LEFT * 0.5)
+
+        family_title = Text("Algorithm Extensions", font_size=28, color=GREEN)
+        family_bullet1 = Text("• Informed RRT*: Elliptical subset search", font_size=20)
+        family_bullet2 = Text("• Anytime RRT*: Real-time trajectory execution", font_size=20)
+        family_bullet3 = Text("• Bridges gap between speed & optimality", font_size=20)
+        family_points = VGroup(family_title, family_bullet1, family_bullet2, family_bullet3).arrange(DOWN, aligned_edge=LEFT, buff=0.2)
+        family_points.move_to(family_box.get_center())
+
+        relevance_footnote = Text("[3] Noreen et al. (2016) | [4] Gammell et al. (2014) | [5] Karaman et al. (2011) | [6] Elbanhawi & Simic (2014)", font_size=16, color=GRAY).to_edge(DOWN).shift(UP * 0.5)
 
         relevance_caption = Text(
-            "In PAR projects, this tradeoff directly affects energy, safety, and mission time.",
+            "RRT* paved the way for robust, optimal trajectory planners in modern robotics.",
             font_size=22,
             color=LIGHT_GRAY,
-        ).to_edge(DOWN).shift(UP * 0.1)
+        ).next_to(relevance_footnote, UP, buff=0.2)
 
-        self.play(FadeIn(relevance_title), FadeIn(relevance_points), run_time=1.2)
-        self.play(FadeIn(relevance_formula), FadeIn(relevance_caption), run_time=1.0)
+        self.play(FadeIn(relevance_title), run_time=0.8)
+        self.play(FadeIn(impact_box), FadeIn(impact_points), run_time=1.0)
+        self.play(FadeIn(family_box), FadeIn(family_points), run_time=1.0)
+        self.play(FadeIn(relevance_footnote), FadeIn(relevance_caption), run_time=0.8)
         self.next_slide()
         self.play(*[FadeOut(mob) for mob in list(self.mobjects)])
 
