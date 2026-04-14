@@ -631,7 +631,7 @@ class MazePathPlanning(Slide):
 
         iter_label_rrt = Tex(r"\textbf{Iteration: }0", font_size=28, color=WHITE).to_corner(UR).shift(DOWN * 0.8)
         caption_rrt = Text("We now run RRT line-by-line using seeded random samples.", font_size=21, color=LIGHT_GRAY).to_edge(DOWN).shift(UP * 0.1)
-        footnote_rrt = Text("[1] LaValle, S. M. (1998). Rapidly-exploring random trees", font_size=16, color=GRAY).to_corner(DL).shift(RIGHT * 0.1 + UP * 0.05)
+        footnote_rrt = Text("[1] LaValle, S. M. (1998). Rapidly-exploring random trees", font_size=16, color=GRAY).to_corner(DL).shift(RIGHT * 0.1 + DOWN * 0.15)
         self.play(FadeIn(iter_label_rrt), FadeIn(caption_rrt), FadeIn(footnote_rrt))
         self.next_slide()
 
@@ -824,7 +824,7 @@ class MazePathPlanning(Slide):
 
         iter_label_star = Tex(r"\textbf{Accepted Node: }0", font_size=28, color=WHITE).to_corner(UR).shift(DOWN * 0.8)
         caption_star = Text("RRT* uses the same samples, then optimizes local connections.", font_size=21, color=LIGHT_GRAY).to_edge(DOWN).shift(UP * 0.1)
-        footnote_star = Text("[2] Karaman & Frazzoli (2011). Sampling-based algorithms for optimal motion planning.", font_size=16, color=GRAY).to_corner(DL).shift(RIGHT * 0.1 + UP * 0.05)
+        footnote_star = Text("[2] Karaman & Frazzoli (2011). Sampling-based algorithms for optimal motion planning.", font_size=16, color=GRAY).to_corner(DL).shift(RIGHT * 0.1 + DOWN * 0.15)
         
         self.play(FadeIn(iter_label_star), FadeIn(caption_star), FadeIn(footnote_star))
         self.next_slide()
