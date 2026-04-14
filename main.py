@@ -1132,7 +1132,8 @@ class MazePathPlanning(Slide):
         rrt_points = VGroup(
             Text("RRT", font_size=31, color=YELLOW),
             Text("+ Fast first feasible path", font_size=22),
-            Text("+ Probabilistically complete (with infinite samples)", font_size=22),
+            Text("+ Probabilistically complete", font_size=22),
+            Text("   (with infinite samples)", font_size=22),
             Text("+ Handles constrained motion", font_size=22),
             Text("- Suboptimal, jagged routes", font_size=22, color=RED),
             Text("- Chaotic tree growth", font_size=22, color=RED),
@@ -1141,7 +1142,8 @@ class MazePathPlanning(Slide):
 
         star_points = VGroup(
             Text("RRT*", font_size=31, color=PURPLE),
-            Text("+ Asymptotically optimal (with infinite samples)", font_size=22),
+            Text("+ Asymptotically optimal", font_size=22),
+            Text("   (with infinite samples)", font_size=22),
             Text("+ Anytime path improvement", font_size=22),
             Text("+ Better final path quality", font_size=22),
             Text("- Slower first solution", font_size=22, color=RED),
@@ -1224,15 +1226,40 @@ class MazePathPlanning(Slide):
             font_size=18,
             color=WHITE,
         )
-
-        refs_group_final = VGroup(ref_1, ref_2, ref_3, ref_4, ref_5).arrange(DOWN, aligned_edge=LEFT, buff=0.23)
+        
+        ref_6 = Text(
+            "[6] Elbanhawi, M., & Simic, M. (2014). Sampling-Based Robot Motion Planning: A Review. IEEE Access.",
+            font_size=18,
+            color=WHITE,
+        )
+        
+        ref_7 = Text(
+            "[7] Gammell, J. D., Srinivasa, S. S., & Barfoot, T. D. (2014). Informed RRT*: Optimal sampling-based path planning focused via direct sampling\n"
+            "     of an admissible ellipsoidal heuristic. IROS.",
+            font_size=18,
+            color=WHITE,
+        )
+        
+        ref_8 = Text(
+            "[8] Noreen, I., Khan, A., & Habib, Z. (2016). Optimal Path Planning using RRT* based Approaches: A Survey and Future Directions. IJACSA.",
+            font_size=18,
+            color=WHITE,
+        )
+        
+        ref_9 = Text(
+            "[9] Karaman, S., Walter, M. R., Perez, A., Frazzoli, E., & Teller, S. (2011). Anytime Motion Planning using the RRT*. ICRA.",
+            font_size=18,
+            color=WHITE,
+        )
+        
+        refs_group_final = VGroup(ref_1, ref_2, ref_3, ref_4, ref_5, ref_6, ref_7, ref_8, ref_9).arrange(DOWN, aligned_edge=LEFT, buff=0.23)
         refs_group_final.next_to(refs_title_final, DOWN, buff=0.42).to_edge(LEFT, buff=0.45)
 
         refs_caption_final = Text(
-            "Includes foundational papers and image sources used in the introduction.",
-            font_size=18,
+            "Parts of these animations were rendered from code generated from Generative AI tools (LLMs), largely GPT-5.3-Codex.",
+            font_size=20,
             color=LIGHT_GRAY,
-        ).to_edge(DOWN).shift(UP * 0.1)
+        ).to_edge(DOWN).shift(UP * 0.2)
 
         self.play(FadeIn(refs_title_final), FadeIn(refs_group_final), FadeIn(refs_caption_final), run_time=1.4)
         self.next_slide()
