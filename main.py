@@ -311,6 +311,23 @@ class MazePathPlanning(Slide):
             return map_group, to_coord, start_dot, goal_dot
 
         # ---------------------------------------------------------
+        # SLIDE 1: Title and Context
+        # ---------------------------------------------------------
+        title1 = Text("Path Planning in Robotics", font_size=50).shift(UP * 1.1)
+        title2 = Text("RRT* for Optimised Path Planning", font_size=52, color=BLUE).next_to(title1, DOWN, buff=0.25)
+        subtitle = Text("Fast Exploration vs Optimal Navigation", font_size=30, color=LIGHT_GREY).next_to(title2, DOWN, buff=0.4)
+
+        refs = VGroup(
+            Text("[1] LaValle (1998): Rapidly-exploring Random Trees", font_size=22),
+            Text("[2] Karaman & Frazzoli (2011): Asymptotic Optimality", font_size=22),
+        ).arrange(DOWN, aligned_edge=LEFT, buff=0.15).next_to(subtitle, DOWN, buff=0.8)
+
+        self.play(Write(title1), Write(title2), run_time=1.4)
+        self.play(FadeIn(subtitle), FadeIn(refs), run_time=1.0)
+        self.next_slide()
+        self.play(FadeOut(title1), FadeOut(title2), FadeOut(subtitle), FadeOut(refs))
+
+        # ---------------------------------------------------------
         # INTRO SLIDE A: Path planning fundamentals
         # ---------------------------------------------------------
         intro_a_title = Text("What Is Path Planning?", font_size=52).to_edge(UP)
@@ -534,23 +551,6 @@ class MazePathPlanning(Slide):
         self.play(FadeIn(intro_d_left_block), FadeIn(intro_d_visual), run_time=1.5)
         self.next_slide()
         self.play(*[FadeOut(mob) for mob in list(self.mobjects)])
-
-        # ---------------------------------------------------------
-        # SLIDE 1: Title and Context
-        # ---------------------------------------------------------
-        title1 = Text("Path Planning in Robotics", font_size=50).shift(UP * 1.1)
-        title2 = Text("RRT* for Optimised Path Planning", font_size=52, color=BLUE).next_to(title1, DOWN, buff=0.25)
-        subtitle = Text("Fast Exploration vs Optimal Navigation", font_size=30, color=LIGHT_GREY).next_to(title2, DOWN, buff=0.4)
-
-        refs = VGroup(
-            Text("[1] LaValle (1998): Rapidly-exploring Random Trees", font_size=22),
-            Text("[2] Karaman & Frazzoli (2011): Asymptotic Optimality", font_size=22),
-        ).arrange(DOWN, aligned_edge=LEFT, buff=0.15).next_to(subtitle, DOWN, buff=0.8)
-
-        self.play(Write(title1), Write(title2), run_time=1.4)
-        self.play(FadeIn(subtitle), FadeIn(refs), run_time=1.0)
-        self.next_slide()
-        self.play(FadeOut(title1), FadeOut(title2), FadeOut(subtitle), FadeOut(refs))
 
         # ---------------------------------------------------------
         # Shared deterministic setup for granular slides
